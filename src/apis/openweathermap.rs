@@ -68,8 +68,4 @@ impl WeatherAPI for OpenWeatherMap {
     ) -> RequestBuilder {
         req_builder.query(&[("q", city), ("units", "metric"), ("APPID", &self.app_id)])
     }
-
-    fn parse_weekly_response(&self, response: Self::Response) -> WeatherDataVec {
-        response.into()
-    }
 }
