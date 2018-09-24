@@ -28,14 +28,16 @@ struct WeatherBitResponse {
     data: [WeatherBitForecast; 16],
 }
 
-impl Into<WeatherDataVec> for WeatherBitResponse {
-    fn into(self) -> WeatherDataVec {
-        self.data
-            .iter()
-            .map(|forecast| WeatherData {
-                date: Utc.timestamp(forecast.ts, 0).date(),
-                temperature: forecast.temp,
-            }).collect::<WeatherDataVec>()
+impl Into<Option<WeatherDataVec>> for WeatherBitResponse {
+    fn into(self) -> Option<WeatherDataVec> {
+        Some(
+            self.data
+                .iter()
+                .map(|forecast| WeatherData {
+                    date: Utc.timestamp(forecast.ts, 0).date(),
+                    temperature: forecast.temp,
+                }).collect::<WeatherDataVec>(),
+        )
     }
 }
 

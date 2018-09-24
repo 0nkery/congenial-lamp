@@ -38,15 +38,17 @@ struct ApixuResponse {
     forecast: ApixuForecast,
 }
 
-impl Into<WeatherDataVec> for ApixuResponse {
-    fn into(self) -> WeatherDataVec {
-        self.forecast
-            .forecastday
-            .iter()
-            .map(|forecast| WeatherData {
-                date: Utc.timestamp(forecast.date_epoch, 0).date(),
-                temperature: forecast.day.avgtemp_c,
-            }).collect::<WeatherDataVec>()
+impl Into<Option<WeatherDataVec>> for ApixuResponse {
+    fn into(self) -> Option<WeatherDataVec> {
+        Some(
+            self.forecast
+                .forecastday
+                .iter()
+                .map(|forecast| WeatherData {
+                    date: Utc.timestamp(forecast.date_epoch, 0).date(),
+                    temperature: forecast.day.avgtemp_c,
+                }).collect::<WeatherDataVec>(),
+        )
     }
 }
 

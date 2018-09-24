@@ -34,25 +34,27 @@ struct OWMResponse {
     list: Vec<OWMDataEntry>,
 }
 
-impl Into<WeatherDataVec> for OWMResponse {
-    fn into(self) -> WeatherDataVec {
-        self.list
-            .iter()
-            .group_by(|entry| Utc.timestamp(entry.dt, 0).date())
-            .into_iter()
-            .map(|(day, data)| {
-                let (temperature_sum, points_count) = data
-                    .fold((0.0, 0.0), |(sum, count), data| {
-                        (sum + data.main.temp, count + 1.0)
-                    });
+impl Into<Option<WeatherDataVec>> for OWMResponse {
+    fn into(self) -> Option<WeatherDataVec> {
+        Some(
+            self.list
+                .iter()
+                .group_by(|entry| Utc.timestamp(entry.dt, 0).date())
+                .into_iter()
+                .map(|(day, data)| {
+                    let (temperature_sum, points_count) = data
+                        .fold((0.0, 0.0), |(sum, count), data| {
+                            (sum + data.main.temp, count + 1.0)
+                        });
 
-                let avg_temperature = temperature_sum / points_count;
+                    let avg_temperature = temperature_sum / points_count;
 
-                WeatherData {
-                    date: day,
-                    temperature: avg_temperature,
-                }
-            }).collect::<WeatherDataVec>()
+                    WeatherData {
+                        date: day,
+                        temperature: avg_temperature,
+                    }
+                }).collect::<WeatherDataVec>(),
+        )
     }
 }
 

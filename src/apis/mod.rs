@@ -18,7 +18,7 @@ pub type WeatherDataVec = SmallVec<[WeatherData; 32]>;
 pub trait WeatherAPI {
     const METHOD: Method = Method::GET;
 
-    type Response: Into<WeatherDataVec>;
+    type Response: Into<Option<WeatherDataVec>>;
 
     fn weekly_request_url(&self, city: &str, country: &str) -> Result<Url, UrlError>;
 
