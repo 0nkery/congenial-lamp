@@ -61,7 +61,7 @@ impl Into<Option<WeatherDataVec>> for OWMResponse {
 impl WeatherAPI for OpenWeatherMap {
     type Response = OWMResponse;
 
-    fn weekly_request_url(&self, city: &str, country: &str) -> Result<Url, UrlError> {
+    fn weekly_request_url(&self, city: &str, _country: &str) -> Result<Url, UrlError> {
         Url::parse_with_params(
             "https://api.openweathermap.org/data/2.5/forecast",
             &[("q", city), ("units", "metric"), ("APPID", &self.app_id)],

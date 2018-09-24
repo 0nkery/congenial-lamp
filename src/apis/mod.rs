@@ -25,8 +25,8 @@ pub trait WeatherAPI {
     fn build_weekly_request(
         &self,
         req_builder: RequestBuilder,
-        city: &str,
-        country: &str,
+        _city: &str,
+        _country: &str,
     ) -> RequestBuilder {
         req_builder
     }
