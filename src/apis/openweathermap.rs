@@ -12,7 +12,7 @@ impl OpenWeatherMap {
     pub fn new() -> Result<Self, std::env::VarError> {
         let app_id = std::env::var("OPENWEATHERMAP_API_KEY")?;
 
-        Ok(OpenWeatherMap { app_id })
+        Ok(Self { app_id })
     }
 }
 

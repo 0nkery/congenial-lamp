@@ -1,5 +1,6 @@
 mod apixu;
 mod openweathermap;
+mod weatherbit;
 
 use reqwest::r#async::RequestBuilder;
 use reqwest::Method;

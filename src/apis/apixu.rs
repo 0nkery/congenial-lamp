@@ -11,7 +11,7 @@ impl Apixu {
     pub fn new() -> Result<Self, std::env::VarError> {
         let key = std::env::var("APIXU_API_KEY")?;
 
-        Ok(Apixu { key })
+        Ok(Self { key })
     }
 }
 
