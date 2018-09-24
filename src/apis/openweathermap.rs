@@ -1,8 +1,8 @@
 use chrono::{TimeZone, Utc};
-use crate::apis::{WeatherAPI, WeatherData, WeatherDataVec};
 use itertools::Itertools;
-use reqwest::r#async::RequestBuilder;
-use serde_derive::Deserialize;
+use reqwest::async::RequestBuilder;
+
+use super::{WeatherAPI, WeatherData, WeatherDataVec};
 
 struct OpenWeatherMap {
     app_id: String,

@@ -1,15 +1,17 @@
+use std::env;
+
 use chrono::{TimeZone, Utc};
-use crate::apis::{WeatherAPI, WeatherData, WeatherDataVec};
-use reqwest::r#async::RequestBuilder;
-use serde_derive::Deserialize;
+use reqwest::async::RequestBuilder;
+
+use super::{WeatherAPI, WeatherData, WeatherDataVec};
 
 struct Apixu {
     key: String,
 }
 
 impl Apixu {
-    pub fn new() -> Result<Self, std::env::VarError> {
-        let key = std::env::var("APIXU_API_KEY")?;
+    pub fn new() -> Result<Self, env::VarError> {
+        let key = env::var("APIXU_API_KEY")?;
 
         Ok(Self { key })
     }

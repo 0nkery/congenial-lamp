@@ -2,13 +2,14 @@ mod apixu;
 mod openweathermap;
 mod weatherbit;
 
-use reqwest::r#async::RequestBuilder;
+use chrono::{Date, Utc};
+use reqwest::async::RequestBuilder;
 use reqwest::Method;
 use smallvec::SmallVec;
 
 pub struct WeatherData {
     temperature: f32,
-    date: chrono::Date<chrono::Utc>,
+    date: Date<Utc>,
 }
 
 pub type WeatherDataVec = SmallVec<[WeatherData; 32]>;
