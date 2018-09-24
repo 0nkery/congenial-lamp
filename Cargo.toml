@@ -2,7 +2,7 @@
 name = "congenial-lamp"
 version = "0.1.0"
 authors = ["Dmitry Shlagoff <richyannet@yandex.ru>"]
-edition = "2018"
+# edition = "2018"
 
 [dependencies]
 reqwest = "0.9"
