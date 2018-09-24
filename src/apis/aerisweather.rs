@@ -5,7 +5,7 @@ use reqwest::{Url, UrlError};
 
 use super::{WeatherAPI, WeatherData, WeatherDataVec};
 
-struct AerisWeather {
+pub struct AerisWeather {
     client_id: String,
     client_secret: String,
 }
@@ -35,7 +35,7 @@ struct AerisWeatherForecast {
 }
 
 #[derive(Deserialize)]
-struct AerisWeatherResponse {
+pub struct AerisWeatherResponse {
     success: bool,
     response: AerisWeatherForecast,
 }

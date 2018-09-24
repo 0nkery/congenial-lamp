@@ -5,7 +5,7 @@ use reqwest::{Url, UrlError};
 
 use super::{WeatherAPI, WeatherData, WeatherDataVec};
 
-struct Apixu {
+pub struct Apixu {
     key: String,
 }
 
@@ -34,7 +34,7 @@ struct ApixuForecast {
 }
 
 #[derive(Deserialize)]
-struct ApixuResponse {
+pub struct ApixuResponse {
     forecast: ApixuForecast,
 }
 

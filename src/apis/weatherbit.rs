@@ -5,7 +5,7 @@ use reqwest::{Url, UrlError};
 
 use super::{WeatherAPI, WeatherData, WeatherDataVec};
 
-struct WeatherBit {
+pub struct WeatherBit {
     key: String,
 }
 
@@ -24,7 +24,7 @@ struct WeatherBitForecast {
 }
 
 #[derive(Deserialize)]
-struct WeatherBitResponse {
+pub struct WeatherBitResponse {
     data: [WeatherBitForecast; 16],
 }
 

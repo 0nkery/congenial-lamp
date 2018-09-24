@@ -11,6 +11,11 @@ extern crate serde;
 
 mod apis;
 
-fn main() {
-    println!("Hello, world!");
+fn main() -> Result<(), Box<std::error::Error>> {
+    let aeris_api = apis::aerisweather::AerisWeather::new()?;
+    let apixu_api = apis::apixu::Apixu::new()?;
+    let openweathermap_api = apis::openweathermap::OpenWeatherMap::new()?;
+    let weatherbit_api = apis::weatherbit::WeatherBit::new()?;
+
+    Ok(())
 }

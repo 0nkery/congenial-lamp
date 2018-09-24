@@ -6,7 +6,7 @@ use reqwest::{Url, UrlError};
 
 use super::{WeatherAPI, WeatherData, WeatherDataVec};
 
-struct OpenWeatherMap {
+pub struct OpenWeatherMap {
     app_id: String,
 }
 
@@ -30,7 +30,7 @@ struct OWMDataEntry {
 }
 
 #[derive(Deserialize)]
-struct OWMResponse {
+pub struct OWMResponse {
     list: Vec<OWMDataEntry>,
 }
 

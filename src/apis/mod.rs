@@ -1,7 +1,7 @@
-mod aerisweather;
-mod apixu;
-mod openweathermap;
-mod weatherbit;
+pub mod aerisweather;
+pub mod apixu;
+pub mod openweathermap;
+pub mod weatherbit;
 
 use chrono::{Date, Utc};
 use reqwest::async::RequestBuilder;
