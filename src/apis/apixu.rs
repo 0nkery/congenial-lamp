@@ -60,7 +60,7 @@ impl WeatherAPI for Apixu {
         &self,
         req_builder: RequestBuilder,
         city: &str,
-        _country: Option<&str>,
+        _country: &str,
     ) -> RequestBuilder {
         req_builder.query(&[("q", city), ("key", &self.key)])
     }

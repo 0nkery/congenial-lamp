@@ -49,13 +49,8 @@ impl WeatherAPI for WeatherBit {
         &self,
         req_builder: RequestBuilder,
         city: &str,
-        country: Option<&str>,
+        country: &str,
     ) -> RequestBuilder {
-        let req_builder = req_builder.query(&[("city", city), ("key", &self.key)]);
-
-        match country {
-            Some(country) => req_builder.query(&[("country", country)]),
-            None => req_builder,
-        }
+        req_builder.query(&[("city", city), ("country", country), ("key", &self.key)])
     }
 }

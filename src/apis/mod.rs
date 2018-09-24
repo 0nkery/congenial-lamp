@@ -25,6 +25,6 @@ pub trait WeatherAPI {
         &self,
         req_builder: RequestBuilder,
         city: &str,
-        country: Option<&str>,
+        country: &str,
     ) -> RequestBuilder;
 }

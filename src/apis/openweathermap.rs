@@ -66,7 +66,7 @@ impl WeatherAPI for OpenWeatherMap {
         &self,
         req_builder: RequestBuilder,
         city: &str,
-        _country: Option<&str>,
+        _country: &str,
     ) -> RequestBuilder {
         req_builder.query(&[("q", city), ("units", "metric"), ("APPID", &self.app_id)])
     }
