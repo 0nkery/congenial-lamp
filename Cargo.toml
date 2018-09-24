@@ -2,7 +2,6 @@
 name = "congenial-lamp"
 version = "0.1.0"
 authors = ["Dmitry Shlagoff <richyannet@yandex.ru>"]
-# edition = "2018"
 
 [dependencies]
 reqwest = "0.9"
@@ -10,6 +9,5 @@ chrono = "0.4"
 futures = "0.1"
 serde = "1.0"
 serde_derive = "1.0"
-serde_json = "1.0"
 itertools = "0.7"
 smallvec = "0.6"
