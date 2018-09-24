@@ -1,7 +1,7 @@
 use std::env;
 
 use chrono::{TimeZone, Utc};
-use reqwest::async::RequestBuilder;
+use reqwest::{Url, UrlError};
 
 use super::{WeatherAPI, WeatherData, WeatherDataVec};
 
@@ -40,17 +40,12 @@ impl Into<WeatherDataVec> for WeatherBitResponse {
 }
 
 impl WeatherAPI for WeatherBit {
-    const BASE_URL: &'static str = "https://api.weatherbit.io/v2.0/forecast/daily";
-
-    type Error = String;
     type Response = WeatherBitResponse;
 
-    fn build_weekly_request(
-        &self,
-        req_builder: RequestBuilder,
-        city: &str,
-        country: &str,
-    ) -> RequestBuilder {
-        req_builder.query(&[("city", city), ("country", country), ("key", &self.key)])
+    fn weekly_request_url(&self, city: &str, country: &str) -> Result<Url, UrlError> {
+        Url::parse_with_params(
+            "https://api.weatherbit.io/v2.0/forecast/daily",
+            &[("city", city), ("country", country), ("key", &self.key)],
+        )
     }
 }

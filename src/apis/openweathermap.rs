@@ -2,7 +2,7 @@ use std::env;
 
 use chrono::{TimeZone, Utc};
 use itertools::Itertools;
-use reqwest::async::RequestBuilder;
+use reqwest::{Url, UrlError};
 
 use super::{WeatherAPI, WeatherData, WeatherDataVec};
 
@@ -57,17 +57,12 @@ impl Into<WeatherDataVec> for OWMResponse {
 }
 
 impl WeatherAPI for OpenWeatherMap {
-    const BASE_URL: &'static str = "https://api.openweathermap.org/data/2.5/forecast";
-
-    type Error = String;
     type Response = OWMResponse;
 
-    fn build_weekly_request(
-        &self,
-        req_builder: RequestBuilder,
-        city: &str,
-        _country: &str,
-    ) -> RequestBuilder {
-        req_builder.query(&[("q", city), ("units", "metric"), ("APPID", &self.app_id)])
+    fn weekly_request_url(&self, city: &str, country: &str) -> Result<Url, UrlError> {
+        Url::parse_with_params(
+            "https://api.openweathermap.org/data/2.5/forecast",
+            &[("q", city), ("units", "metric"), ("APPID", &self.app_id)],
+        )
     }
 }
