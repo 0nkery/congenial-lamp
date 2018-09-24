@@ -1,3 +1,5 @@
+use std::env;
+
 use chrono::{TimeZone, Utc};
 use itertools::Itertools;
 use reqwest::async::RequestBuilder;
@@ -9,8 +11,8 @@ struct OpenWeatherMap {
 }
 
 impl OpenWeatherMap {
-    pub fn new() -> Result<Self, std::env::VarError> {
-        let app_id = std::env::var("OPENWEATHERMAP_API_KEY")?;
+    pub fn new() -> Result<Self, env::VarError> {
+        let app_id = env::var("OPENWEATHERMAP_API_KEY")?;
 
         Ok(Self { app_id })
     }

@@ -1,3 +1,5 @@
+use std::env;
+
 use chrono::{TimeZone, Utc};
 use reqwest::async::RequestBuilder;
 
@@ -8,8 +10,8 @@ struct WeatherBit {
 }
 
 impl WeatherBit {
-    pub fn new() -> Result<Self, std::env::VarError> {
-        let key = std::env::var("WEATHERBIT_API_KEY")?;
+    pub fn new() -> Result<Self, env::VarError> {
+        let key = env::var("WEATHERBIT_API_KEY")?;
 
         Ok(Self { key })
     }
@@ -18,12 +20,12 @@ impl WeatherBit {
 #[derive(Deserialize)]
 struct WeatherBitForecast {
     ts: i64,
-    temp: f32
+    temp: f32,
 }
 
 #[derive(Deserialize)]
 struct WeatherBitResponse {
-    data: [WeatherBitForecast; 16]
+    data: [WeatherBitForecast; 16],
 }
 
 impl Into<WeatherDataVec> for WeatherBitResponse {
@@ -52,8 +54,8 @@ impl WeatherAPI for WeatherBit {
         let req_builder = req_builder.query(&[("city", city), ("key", &self.key)]);
 
         match country {
-            Some(country) => req_builder.query(&[("country", country)])
-            None => req_builder
+            Some(country) => req_builder.query(&[("country", country)]),
+            None => req_builder,
         }
     }
 }
