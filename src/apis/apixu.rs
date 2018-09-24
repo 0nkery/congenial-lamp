@@ -48,8 +48,6 @@ impl Into<WeatherDataVec> for ApixuResponse {
     }
 }
 
-const MAX_DAYS: &'static str = "7";
-
 impl WeatherAPI for Apixu {
     const BASE_URL: &'static str = "https://api.apixu.com/v1/forecast.json";
 
@@ -62,6 +60,6 @@ impl WeatherAPI for Apixu {
         city: &str,
         _country: Option<&str>,
     ) -> RequestBuilder {
-        req_builder.query(&[("q", city), ("days", MAX_DAYS), ("key", &self.key)])
+        req_builder.query(&[("q", city), ("key", &self.key)])
     }
 }
