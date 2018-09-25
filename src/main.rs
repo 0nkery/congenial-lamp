@@ -10,7 +10,6 @@ extern crate smallvec;
 extern crate serde_derive;
 extern crate serde;
 
-use apis::WeatherAPI;
 use futures::Future;
 
 mod apis;
@@ -61,7 +60,7 @@ fn main() -> Result<(), Box<std::error::Error>> {
 
     let join = req1
         .join(req2)
-        .map(|(res1, res2)| ())
+        .map(|_| ())
         .join(req3)
         .map(|_| ())
         .join(req4)
