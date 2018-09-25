@@ -37,14 +37,14 @@ struct AerisWeatherForecast {
 #[derive(Deserialize)]
 pub struct AerisWeatherResponse {
     success: bool,
-    response: AerisWeatherForecast,
+    response: [AerisWeatherForecast; 1],
 }
 
 impl Into<Option<WeatherDataVec>> for AerisWeatherResponse {
     fn into(self) -> Option<WeatherDataVec> {
         if self.success {
             Some(
-                self.response
+                self.response[0]
                     .periods
                     .iter()
                     .map(|forecast| WeatherData {

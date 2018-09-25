@@ -52,13 +52,15 @@ impl Into<Option<WeatherDataVec>> for ApixuResponse {
     }
 }
 
+const MAX_DAYS: &'static str = "7";
+
 impl WeatherAPI for Apixu {
     type Response = ApixuResponse;
 
     fn weekly_request_url(&self, city: &str, _country: &str) -> Result<Url, UrlError> {
         Url::parse_with_params(
             "https://api.apixu.com/v1/forecast.json",
-            &[("q", city), ("key", &self.key)],
+            &[("q", city), ("key", &self.key), ("days", MAX_DAYS)],
         )
     }
 }

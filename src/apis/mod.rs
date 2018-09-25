@@ -8,6 +8,7 @@ use reqwest::async::RequestBuilder;
 use reqwest::{Method, Url, UrlError};
 use smallvec::SmallVec;
 
+#[derive(Debug)]
 pub struct WeatherData {
     temperature: f32,
     date: Date<Utc>,
