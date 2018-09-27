@@ -52,7 +52,7 @@ impl Into<Option<WeatherDataVec>> for ApixuResponse {
     }
 }
 
-const MAX_DAYS: &'static str = "7";
+const MAX_DAYS: &str = "7";
 
 impl WeatherAPI for Apixu {
     type Response = ApixuResponse;
