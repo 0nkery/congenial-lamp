@@ -10,7 +10,9 @@ extern crate smallvec;
 #[macro_use]
 extern crate serde_derive;
 extern crate serde;
+extern crate serde_json;
 
+use actix_web::{http, server, App, HttpResponse, Query};
 use futures::Future;
 
 mod apis;
@@ -35,24 +37,34 @@ where
         .map(|res| res.into())
 }
 
-fn main() -> Result<(), Box<std::error::Error>> {
-    let aeris_api = apis::AerisWeather::new()?;
-    let apixu_api = apis::Apixu::new()?;
-    let openweathermap_api = apis::OpenWeatherMap::new()?;
-    let weatherbit_api = apis::WeatherBit::new()?;
+#[derive(Deserialize)]
+struct QueryParams {
+    country: String,
+    city: String,
+}
+
+fn index(
+    req: Query<QueryParams>,
+) -> Box<Future<Item = HttpResponse, Error = actix_web::error::InternalError<&'static str>>> {
+    println!("req params: {} {}", req.country, req.city);
+
+    let aeris_api = apis::AerisWeather::new().unwrap();
+    let apixu_api = apis::Apixu::new().unwrap();
+    let openweathermap_api = apis::OpenWeatherMap::new().unwrap();
+    let weatherbit_api = apis::WeatherBit::new().unwrap();
 
     let client = reqwest::async::Client::new();
 
-    let req1 = prepare_request(&client, "Novokuznetsk", "RU", aeris_api)
+    let req1 = prepare_request(&client, &req.city, &req.country, aeris_api)
         .map_err(|err| println!("{}", err));
 
-    let req2 = prepare_request(&client, "Novokuznetsk", "RU", openweathermap_api)
+    let req2 = prepare_request(&client, &req.city, &req.country, openweathermap_api)
         .map_err(|err| println!("{}", err));
 
-    let req3 = prepare_request(&client, "Novokuznetsk", "RU", apixu_api)
+    let req3 = prepare_request(&client, &req.city, &req.country, apixu_api)
         .map_err(|err| println!("{}", err));
 
-    let req4 = prepare_request(&client, "Novokuznetsk", "RU", weatherbit_api)
+    let req4 = prepare_request(&client, &req.city, &req.country, weatherbit_api)
         .map_err(|err| println!("{}", err));
 
     let join = req1
@@ -65,11 +77,27 @@ fn main() -> Result<(), Box<std::error::Error>> {
         .map(|vec| {
             if let Some(vec) = vec {
                 let aggregate = apis::aggregate_results(vec);
-                println!("{:?}", aggregate);
+                let body = serde_json::to_string(aggregate.as_slice()).unwrap();
+                HttpResponse::Ok()
+                    .content_type("application/json")
+                    .body(body)
+            } else {
+                HttpResponse::Ok().finish()
             }
+        }).map_err(|_| {
+            actix_web::error::InternalError::new(
+                "fail",
+                actix_web::http::StatusCode::INTERNAL_SERVER_ERROR,
+            )
         });
 
-    tokio::run(join);
+    Box::new(join)
+}
+
+fn main() -> Result<(), Box<std::error::Error>> {
+    server::new(|| App::new().resource("/", |r| r.method(http::Method::GET).with(index)))
+        .bind("127.0.0.1:8088")?
+        .run();
 
     Ok(())
 }
