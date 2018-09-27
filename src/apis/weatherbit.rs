@@ -34,7 +34,7 @@ impl Into<Option<WeatherDataVec>> for WeatherBitResponse {
             self.data
                 .iter()
                 .map(|forecast| WeatherData {
-                    date: Utc.timestamp(forecast.ts, 0).date(),
+                    date: Utc.timestamp(forecast.ts, 0),
                     temperature: forecast.temp,
                 }).collect::<WeatherDataVec>(),
         )

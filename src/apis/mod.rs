@@ -8,16 +8,17 @@ pub use self::apixu::Apixu;
 pub use self::openweathermap::OpenWeatherMap;
 pub use self::weatherbit::WeatherBit;
 
-use chrono::{Date, Utc};
+use chrono::{DateTime, Utc};
 use itertools::Itertools;
 use reqwest::async::RequestBuilder;
 use reqwest::{Method, Url, UrlError};
 use smallvec::SmallVec;
 
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub struct WeatherData {
     pub temperature: f32,
-    pub date: Date<Utc>,
+    // `DateTime`, потому что `chrono` не умеет serde для `Date`.
+    pub date: DateTime<Utc>,
 }
 
 pub type WeatherDataVec = SmallVec<[WeatherData; 32]>;
@@ -58,7 +59,8 @@ pub fn aggregate_results(mut weather_data: WeatherDataVec) -> WeatherDataVec {
 
     weather_data
         .iter()
-        .group_by(|entry| entry.date)
+        // Нормализуем по дате (во избежание различий во времени - например, секунды отличаются).
+        .group_by(|entry| entry.date.date())
         .into_iter()
         .map(|(day, data)| {
             let (temperature_sum, points_count) = data.fold((0.0, 0.0), |(sum, count), data| {
@@ -68,7 +70,7 @@ pub fn aggregate_results(mut weather_data: WeatherDataVec) -> WeatherDataVec {
             let avg_temperature = temperature_sum / points_count;
 
             WeatherData {
-                date: day,
+                date: day.and_hms(0, 0, 0),
                 temperature: avg_temperature,
             }
         }).collect::<WeatherDataVec>()

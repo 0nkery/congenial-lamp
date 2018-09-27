@@ -39,6 +39,8 @@ impl Into<Option<WeatherDataVec>> for OWMResponse {
         Some(
             self.list
                 .iter()
+                // Здесь нужно нормализовать по дате, потому что OpenWeatherMap
+                // возращает по несколько записей на один день - через каждые 3 часа.
                 .group_by(|entry| Utc.timestamp(entry.dt, 0).date())
                 .into_iter()
                 .map(|(day, data)| {
@@ -50,7 +52,7 @@ impl Into<Option<WeatherDataVec>> for OWMResponse {
                     let avg_temperature = temperature_sum / points_count;
 
                     WeatherData {
-                        date: day,
+                        date: day.and_hms(0, 0, 0),
                         temperature: avg_temperature,
                     }
                 }).collect::<WeatherDataVec>(),

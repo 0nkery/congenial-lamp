@@ -45,7 +45,7 @@ impl Into<Option<WeatherDataVec>> for ApixuResponse {
                 .forecastday
                 .iter()
                 .map(|forecast| WeatherData {
-                    date: Utc.timestamp(forecast.date_epoch, 0).date(),
+                    date: Utc.timestamp(forecast.date_epoch, 0),
                     temperature: forecast.day.avgtemp_c,
                 }).collect::<WeatherDataVec>(),
         )

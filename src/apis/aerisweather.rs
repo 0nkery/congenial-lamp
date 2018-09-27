@@ -48,7 +48,7 @@ impl Into<Option<WeatherDataVec>> for AerisWeatherResponse {
                     .periods
                     .iter()
                     .map(|forecast| WeatherData {
-                        date: Utc.timestamp(forecast.timestamp, 0).date(),
+                        date: Utc.timestamp(forecast.timestamp, 0),
                         temperature: forecast.avg_temp_c,
                     }).collect::<WeatherDataVec>(),
             )
