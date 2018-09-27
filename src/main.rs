@@ -95,7 +95,7 @@ fn index(
 }
 
 fn main() -> Result<(), Box<std::error::Error>> {
-    server::new(|| App::new().resource("/", |r| r.method(http::Method::GET).with(index)))
+    server::new(|| App::new().resource("/forecast", |r| r.method(http::Method::GET).with(index)))
         .bind("127.0.0.1:8088")?
         .run();
 
