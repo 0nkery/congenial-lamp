@@ -99,7 +99,9 @@ fn index(
     Box::new(join)
 }
 
-fn main() -> Result<(), Box<std::error::Error>> {
+fn main() {
+    let bind_to = std::env::var("ADDRESS").unwrap_or("127.0.0.1:8088".to_string());
+
     env_logger::init();
 
     let sys = actix::System::new("forecast");
@@ -108,10 +110,10 @@ fn main() -> Result<(), Box<std::error::Error>> {
         App::new()
             .middleware(middleware::Logger::default())
             .resource("/forecast", |r| r.method(http::Method::GET).with(index))
-    }).bind("127.0.0.1:8088")?
+    }).bind(&bind_to)
+    .expect(&format!("Failed to bind to address {}", bind_to))
     .start();
 
+    info!("Running server on {}", bind_to);
     sys.run();
-
-    Ok(())
 }
