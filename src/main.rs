@@ -7,12 +7,16 @@ extern crate chrono;
 extern crate itertools;
 extern crate smallvec;
 
+extern crate env_logger;
+#[macro_use]
+extern crate log;
+
 #[macro_use]
 extern crate serde_derive;
 extern crate serde;
 extern crate serde_json;
 
-use actix_web::{http, server, App, HttpResponse, Query};
+use actix_web::{actix, http, middleware, server, App, HttpResponse, Query};
 use futures::Future;
 
 mod apis;
@@ -46,8 +50,6 @@ struct QueryParams {
 fn index(
     req: Query<QueryParams>,
 ) -> Box<Future<Item = HttpResponse, Error = actix_web::error::InternalError<&'static str>>> {
-    println!("req params: {} {}", req.country, req.city);
-
     let aeris_api = apis::AerisWeather::new().unwrap();
     let apixu_api = apis::Apixu::new().unwrap();
     let openweathermap_api = apis::OpenWeatherMap::new().unwrap();
@@ -95,9 +97,18 @@ fn index(
 }
 
 fn main() -> Result<(), Box<std::error::Error>> {
-    server::new(|| App::new().resource("/forecast", |r| r.method(http::Method::GET).with(index)))
-        .bind("127.0.0.1:8088")?
-        .run();
+    env_logger::init();
+
+    let sys = actix::System::new("forecast");
+
+    server::new(|| {
+        App::new()
+            .middleware(middleware::Logger::default())
+            .resource("/forecast", |r| r.method(http::Method::GET).with(index))
+    }).bind("127.0.0.1:8088")?
+    .start();
+
+    sys.run();
 
     Ok(())
 }
