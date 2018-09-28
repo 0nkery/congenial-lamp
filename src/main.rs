@@ -1,3 +1,5 @@
+#[macro_use]
+extern crate actix;
 extern crate actix_web;
 extern crate futures;
 extern crate reqwest;
@@ -16,9 +18,10 @@ extern crate serde_derive;
 extern crate serde;
 extern crate serde_json;
 
-use actix_web::{actix, http, middleware, server, App, HttpResponse, Query};
+use actix_web::{http, middleware, server, App, HttpResponse, Query};
 use futures::Future;
 
+mod actors;
 mod apis;
 
 fn prepare_request<A, R>(
