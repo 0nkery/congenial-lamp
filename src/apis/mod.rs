@@ -9,7 +9,6 @@ pub use self::openweathermap::OpenWeatherMap;
 pub use self::weatherbit::WeatherBit;
 
 use chrono::{DateTime, Utc};
-use itertools::Itertools;
 use reqwest::async::RequestBuilder;
 use reqwest::{Method, Url, UrlError};
 use smallvec::SmallVec;
@@ -38,40 +37,4 @@ pub trait WeatherAPI {
     ) -> RequestBuilder {
         req_builder
     }
-}
-
-pub fn join_two_vecs(
-    (vec1, vec2): (Option<WeatherDataVec>, Option<WeatherDataVec>),
-) -> Option<WeatherDataVec> {
-    match (vec1, vec2) {
-        (Some(mut vec1), Some(vec2)) => {
-            vec1.extend(vec2);
-            Some(vec1)
-        }
-        (None, Some(vec)) => Some(vec),
-        (Some(vec), None) => Some(vec),
-        _ => None,
-    }
-}
-
-pub fn aggregate_results(mut weather_data: WeatherDataVec) -> WeatherDataVec {
-    weather_data.sort_unstable_by(|entry1, entry2| entry1.date.cmp(&entry2.date));
-
-    weather_data
-        .iter()
-        // Нормализуем по дате (во избежание различий во времени - например, секунды отличаются).
-        .group_by(|entry| entry.date.date())
-        .into_iter()
-        .map(|(day, data)| {
-            let (temperature_sum, points_count) = data.fold((0.0, 0.0), |(sum, count), data| {
-                (sum + data.temperature, count + 1.0)
-            });
-
-            let avg_temperature = temperature_sum / points_count;
-
-            WeatherData {
-                date: day.and_hms(0, 0, 0),
-                temperature: avg_temperature,
-            }
-        }).collect::<WeatherDataVec>()
 }

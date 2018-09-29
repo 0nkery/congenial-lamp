@@ -1,1 +1,1 @@
-pub mod weather;
+pub mod aggregator;
