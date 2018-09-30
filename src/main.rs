@@ -35,7 +35,7 @@ struct AppState {
 
 unsafe impl Sync for AppState {}
 
-fn index(
+fn daily_forecast(
     req: &HttpRequest<AppState>,
 ) -> Box<Future<Item = HttpResponse, Error = actix_web::error::InternalError<&'static str>>> {
     let query = Query::<WeatherQuery>::extract(req).expect("bad request");
@@ -111,7 +111,9 @@ fn main() {
     server::new(move || {
         App::with_state(state.clone())
             .middleware(middleware::Logger::default())
-            .resource("/forecast", |r| r.method(http::Method::GET).f(index))
+            .resource("/forecast/daily", |r| {
+                r.method(http::Method::GET).f(daily_forecast)
+            })
     }).bind(&bind_to)
     .unwrap_or_else(|err| panic!("Failed to bind to address {} due to {}", bind_to, err))
     .start();
