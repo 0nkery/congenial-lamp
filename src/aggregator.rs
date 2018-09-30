@@ -1,21 +1,10 @@
-use actix::{Actor, Context, Handler, Message, Recipient};
+use actix::{Actor, Context, Handler, Recipient};
 use futures::{stream, Future, Stream};
 use itertools::{flatten, Itertools};
 
-use apis::{WeatherData, WeatherDataVec};
+use apis::{WeatherData, WeatherDataVec, WeatherQuery};
 
-#[derive(Clone)]
-struct WeatherQuery {
-    country: String,
-    city: String,
-}
-
-impl Message for WeatherQuery {
-    // TODO: more descriptive Error
-    type Result = Result<WeatherDataVec, ()>;
-}
-
-struct Aggregator {
+pub struct Aggregator {
     weather_apis: ::smallvec::SmallVec<[Recipient<WeatherQuery>; 32]>,
 }
 

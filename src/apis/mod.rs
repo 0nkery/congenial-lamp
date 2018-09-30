@@ -8,9 +8,8 @@ pub use self::apixu::Apixu;
 pub use self::openweathermap::OpenWeatherMap;
 pub use self::weatherbit::WeatherBit;
 
+use actix::Message;
 use chrono::{DateTime, Utc};
-use reqwest::async::RequestBuilder;
-use reqwest::{Method, Url, UrlError};
 use smallvec::SmallVec;
 
 #[derive(Debug, Serialize)]
@@ -22,19 +21,13 @@ pub struct WeatherData {
 
 pub type WeatherDataVec = SmallVec<[WeatherData; 32]>;
 
-pub trait WeatherAPI {
-    const METHOD: Method = Method::GET;
+#[derive(Clone)]
+pub struct WeatherQuery {
+    country: String,
+    city: String,
+}
 
-    type Response: Into<Option<WeatherDataVec>>;
-
-    fn weekly_request_url(&self, city: &str, country: &str) -> Result<Url, UrlError>;
-
-    fn build_weekly_request(
-        &self,
-        req_builder: RequestBuilder,
-        _city: &str,
-        _country: &str,
-    ) -> RequestBuilder {
-        req_builder
-    }
+impl Message for WeatherQuery {
+    // TODO: more descriptive Error
+    type Result = Result<WeatherDataVec, ()>;
 }

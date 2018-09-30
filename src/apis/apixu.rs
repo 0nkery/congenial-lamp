@@ -1,19 +1,54 @@
 use std::env;
+use std::rc::Rc;
 
+use actix::{Actor, Context, Handler};
 use chrono::{TimeZone, Utc};
-use reqwest::{Url, UrlError};
+use futures::Future;
+use reqwest::{async::Client, Url, UrlError};
 
-use super::{WeatherAPI, WeatherData, WeatherDataVec};
+use apis::{WeatherData, WeatherDataVec, WeatherQuery};
 
 pub struct Apixu {
     key: String,
+    client: Rc<Client>,
 }
 
+const MAX_DAYS: &str = "7";
+
 impl Apixu {
-    pub fn new() -> Result<Self, env::VarError> {
+    pub fn new(client: Rc<Client>) -> Result<Self, env::VarError> {
         let key = env::var("APIXU_API_KEY")?;
 
-        Ok(Self { key })
+        Ok(Self { key, client })
+    }
+
+    fn make_url(&self, query: &WeatherQuery) -> Result<Url, UrlError> {
+        Url::parse_with_params(
+            "https://api.apixu.com/v1/forecast.json",
+            &[("days", MAX_DAYS), ("q", &query.city), ("key", &self.key)],
+        )
+    }
+}
+
+impl Actor for Apixu {
+    type Context = Context<Self>;
+}
+
+impl Handler<WeatherQuery> for Apixu {
+    type Result = Box<Future<Item = WeatherDataVec, Error = ()>>;
+
+    fn handle(&mut self, msg: WeatherQuery, _ctx: &mut Self::Context) -> Self::Result {
+        let url = self.make_url(&msg).expect("Failed to prepare URL");
+
+        let req = self
+            .client
+            .get(url)
+            .send()
+            .and_then(|mut res| res.json::<ApixuResponse>())
+            .map(|res| res.into())
+            .map_err(|_| ());
+
+        Box::new(req)
     }
 }
 
@@ -38,29 +73,14 @@ pub struct ApixuResponse {
     forecast: ApixuForecast,
 }
 
-impl Into<Option<WeatherDataVec>> for ApixuResponse {
-    fn into(self) -> Option<WeatherDataVec> {
-        Some(
-            self.forecast
-                .forecastday
-                .iter()
-                .map(|forecast| WeatherData {
-                    date: Utc.timestamp(forecast.date_epoch, 0),
-                    temperature: forecast.day.avgtemp_c,
-                }).collect::<WeatherDataVec>(),
-        )
-    }
-}
-
-const MAX_DAYS: &str = "7";
-
-impl WeatherAPI for Apixu {
-    type Response = ApixuResponse;
-
-    fn weekly_request_url(&self, city: &str, _country: &str) -> Result<Url, UrlError> {
-        Url::parse_with_params(
-            "https://api.apixu.com/v1/forecast.json",
-            &[("q", city), ("key", &self.key), ("days", MAX_DAYS)],
-        )
+impl Into<WeatherDataVec> for ApixuResponse {
+    fn into(self) -> WeatherDataVec {
+        self.forecast
+            .forecastday
+            .iter()
+            .map(|forecast| WeatherData {
+                date: Utc.timestamp(forecast.date_epoch, 0),
+                temperature: forecast.day.avgtemp_c,
+            }).collect::<WeatherDataVec>()
     }
 }

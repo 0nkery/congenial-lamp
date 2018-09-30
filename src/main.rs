@@ -20,7 +20,7 @@ extern crate serde_json;
 use actix_web::{http, middleware, server, App, HttpResponse, Query};
 use futures::Future;
 
-mod actors;
+mod aggregator;
 mod apis;
 
 // fn prepare_request<A, R>(
