@@ -23,26 +23,6 @@ use futures::Future;
 mod aggregator;
 mod apis;
 
-// fn prepare_request<A, R>(
-//     client: &reqwest::async::Client,
-//     city: &str,
-//     country: &str,
-//     api: A,
-// ) -> impl Future<Item = Option<apis::WeatherDataVec>, Error = reqwest::Error>
-// where
-//     A: apis::WeatherAPI<Response = R>,
-//     R: Into<Option<apis::WeatherDataVec>>,
-//     for<'de> R: serde::Deserialize<'de>,
-// {
-//     let url = api.weekly_request_url(city, country).unwrap();
-//     let builder = client.request(A::METHOD, url);
-
-//     api.build_weekly_request(builder, city, country)
-//         .send()
-//         .and_then(|mut res| res.json::<R>())
-//         .map(|res| res.into())
-// }
-
 // #[derive(Deserialize)]
 // struct QueryParams {
 //     country: String,
@@ -52,25 +32,6 @@ mod apis;
 // fn index(
 //     req: Query<QueryParams>,
 // ) -> Box<Future<Item = HttpResponse, Error = actix_web::error::InternalError<&'static str>>> {
-//     let aeris_api = apis::AerisWeather::new().unwrap();
-//     let apixu_api = apis::Apixu::new().unwrap();
-//     let openweathermap_api = apis::OpenWeatherMap::new().unwrap();
-//     let weatherbit_api = apis::WeatherBit::new().unwrap();
-
-//     let client = reqwest::async::Client::new();
-
-//     let req1 = prepare_request(&client, &req.city, &req.country, aeris_api)
-//         .map_err(|err| println!("{}", err));
-
-//     let req2 = prepare_request(&client, &req.city, &req.country, openweathermap_api)
-//         .map_err(|err| println!("{}", err));
-
-//     let req3 = prepare_request(&client, &req.city, &req.country, apixu_api)
-//         .map_err(|err| println!("{}", err));
-
-//     let req4 = prepare_request(&client, &req.city, &req.country, weatherbit_api)
-//         .map_err(|err| println!("{}", err));
-
 //     let join = req1
 //         .join(req2)
 //         .map(apis::join_two_vecs)
@@ -98,12 +59,34 @@ mod apis;
 //     Box::new(join)
 // }
 
-fn main() {
+fn main() -> Result<(), Box<::std::error::Error>> {
     let bind_to = std::env::var("ADDRESS").unwrap_or("127.0.0.1:8088".to_string());
 
     env_logger::init();
 
     let sys = actix::System::new("forecast");
+
+    let client = std::sync::Arc::new(reqwest::async::Client::new());
+
+    let aerisweather = apis::AerisWeather::new(client.clone())?;
+    let aerisweather_actor = actix::Arbiter::start(|_ctx| aerisweather);
+
+    let apixu = apis::Apixu::new(client.clone())?;
+    let apixu_actor = actix::Arbiter::start(|_ctx| apixu);
+
+    let openweathermap = apis::OpenWeatherMap::new(client.clone())?;
+    let openweathermap_actor = actix::Arbiter::start(|_ctx| openweathermap);
+
+    let weatherbit = apis::WeatherBit::new(client.clone())?;
+    let weatherbit_actor = actix::Arbiter::start(|_ctx| weatherbit);
+
+    let aggregator = aggregator::Aggregator::new()
+        .add_api(aerisweather_actor.recipient())
+        .add_api(apixu_actor.recipient())
+        .add_api(openweathermap_actor.recipient())
+        .add_api(weatherbit_actor.recipient());
+
+    actix::Arbiter::start(|_ctx| aggregator);
 
     server::new(|| {
         App::new().middleware(middleware::Logger::default())
@@ -114,4 +97,6 @@ fn main() {
 
     info!("Running server on {}", bind_to);
     sys.run();
+
+    Ok(())
 }

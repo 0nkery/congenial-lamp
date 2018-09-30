@@ -1,5 +1,5 @@
 use std::env;
-use std::rc::Rc;
+use std::sync::Arc;
 
 use actix::{Actor, Context, Handler};
 use chrono::{TimeZone, Utc};
@@ -10,13 +10,13 @@ use apis::{WeatherData, WeatherDataVec, WeatherQuery};
 
 pub struct Apixu {
     key: String,
-    client: Rc<Client>,
+    client: Arc<Client>,
 }
 
 const MAX_DAYS: &str = "7";
 
 impl Apixu {
-    pub fn new(client: Rc<Client>) -> Result<Self, env::VarError> {
+    pub fn new(client: Arc<Client>) -> Result<Self, env::VarError> {
         let key = env::var("APIXU_API_KEY")?;
 
         Ok(Self { key, client })

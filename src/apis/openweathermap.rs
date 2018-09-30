@@ -1,5 +1,5 @@
 use std::env;
-use std::rc::Rc;
+use std::sync::Arc;
 
 use actix::{Actor, Context, Handler};
 use chrono::{TimeZone, Utc};
@@ -11,11 +11,11 @@ use apis::{WeatherData, WeatherDataVec, WeatherQuery};
 
 pub struct OpenWeatherMap {
     app_id: String,
-    client: Rc<Client>,
+    client: Arc<Client>,
 }
 
 impl OpenWeatherMap {
-    pub fn new(client: Rc<Client>) -> Result<Self, env::VarError> {
+    pub fn new(client: Arc<Client>) -> Result<Self, env::VarError> {
         let app_id = env::var("OPENWEATHERMAP_API_KEY")?;
 
         Ok(Self { app_id, client })

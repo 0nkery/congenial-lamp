@@ -1,5 +1,5 @@
 use std::env;
-use std::rc::Rc;
+use std::sync::Arc;
 
 use actix::{Actor, Context, Handler};
 use chrono::{TimeZone, Utc};
@@ -10,11 +10,11 @@ use apis::{WeatherData, WeatherDataVec, WeatherQuery};
 
 pub struct WeatherBit {
     key: String,
-    client: Rc<Client>,
+    client: Arc<Client>,
 }
 
 impl WeatherBit {
-    pub fn new(client: Rc<Client>) -> Result<Self, env::VarError> {
+    pub fn new(client: Arc<Client>) -> Result<Self, env::VarError> {
         let key = env::var("WEATHERBIT_API_KEY")?;
 
         Ok(Self { key, client })

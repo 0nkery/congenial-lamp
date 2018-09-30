@@ -1,5 +1,5 @@
 use std::env;
-use std::rc::Rc;
+use std::sync::Arc;
 
 use actix::{Actor, Context, Handler};
 use chrono::{TimeZone, Utc};
@@ -11,11 +11,11 @@ use apis::{WeatherData, WeatherDataVec, WeatherQuery};
 pub struct AerisWeather {
     client_id: String,
     client_secret: String,
-    client: Rc<Client>,
+    client: Arc<Client>,
 }
 
 impl AerisWeather {
-    pub fn new(client: Rc<Client>) -> Result<Self, env::VarError> {
+    pub fn new(client: Arc<Client>) -> Result<Self, env::VarError> {
         let client_id = env::var("AERISWEATHER_CLIENT_ID")?;
         let client_secret = env::var("AERISWEATHER_CLIENT_SECRET")?;
 

@@ -1,11 +1,26 @@
 use actix::{Actor, Context, Handler, Recipient};
 use futures::{stream, Future, Stream};
 use itertools::{flatten, Itertools};
+use smallvec::SmallVec;
 
 use apis::{WeatherData, WeatherDataVec, WeatherQuery};
 
 pub struct Aggregator {
-    weather_apis: ::smallvec::SmallVec<[Recipient<WeatherQuery>; 32]>,
+    weather_apis: SmallVec<[Recipient<WeatherQuery>; 32]>,
+}
+
+impl Aggregator {
+    pub fn new() -> Self {
+        Self {
+            weather_apis: SmallVec::new(),
+        }
+    }
+
+    pub fn add_api(mut self, api: Recipient<WeatherQuery>) -> Self {
+        self.weather_apis.push(api);
+
+        self
+    }
 }
 
 impl Actor for Aggregator {
