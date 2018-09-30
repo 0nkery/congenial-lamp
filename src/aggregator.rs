@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use actix::{Actor, Context, Handler, Recipient};
+use actix::{fut::wrap_future, Actor, ActorFuture, Context, Handler, Recipient, ResponseActFuture};
 use futures::{future, stream, Future, Stream};
 use itertools::{flatten, Itertools};
 use smallvec::SmallVec;
@@ -55,32 +55,39 @@ impl Actor for Aggregator {
 }
 
 impl Handler<WeatherQuery> for Aggregator {
-    type Result = Box<Future<Item = WeatherDataVec, Error = ()>>;
+    type Result = ResponseActFuture<Self, WeatherDataVec, ()>;
 
     fn handle(&mut self, msg: WeatherQuery, _ctx: &mut Self::Context) -> Self::Result {
         match self.cache.get(&msg) {
             Some(entry) => {
-                let entry = (*entry).clone();
-                Box::new(future::ok(entry))
+                let entry_fut = future::ok((*entry).clone());
+                Box::new(wrap_future(entry_fut))
             }
             None => {
-                // TODO: without Clone?
+                // TODO: without Clone? Rc?
                 let requests = self.weather_apis.iter().map(|api| api.send(msg.clone()));
 
-                Box::new(
-                    stream::futures_unordered(requests)
-                        .collect()
-                        .map(|results| {
-                            let all_data_iter = results
-                                .into_iter()
-                                .filter(|result| result.is_ok())
-                                .map(|result| result.unwrap().into_iter());
+                let aggregated_data = stream::futures_unordered(requests)
+                    .collect()
+                    .map(|results| {
+                        let all_data_iter = results
+                            .into_iter()
+                            .filter(|result| result.is_ok())
+                            .map(|result| result.unwrap().into_iter());
 
-                            let all_data = flatten(all_data_iter).collect();
+                        let all_data = flatten(all_data_iter).collect();
 
-                            Self::aggregate(all_data)
-                        }).map_err(|_| ()),
-                )
+                        Self::aggregate(all_data)
+                    }).map_err(|_| ());
+
+                let msg = msg.clone();
+                let update_self =
+                    wrap_future::<_, Self>(aggregated_data).map(move |result, actor, _ctx| {
+                        actor.cache.insert(msg, result.clone());
+                        result
+                    });
+
+                Box::new(update_self)
             }
         }
     }
