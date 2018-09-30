@@ -13,7 +13,7 @@ use chrono::{DateTime, Utc};
 use reqwest::{Method, Url, UrlError};
 use smallvec::SmallVec;
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Clone)]
 pub struct WeatherData {
     pub temperature: f32,
     // `DateTime`, потому что `chrono` не умеет serde для `Date`.
@@ -22,7 +22,7 @@ pub struct WeatherData {
 
 pub type WeatherDataVec = SmallVec<[WeatherData; 32]>;
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, Hash, PartialEq, Eq)]
 pub struct WeatherQuery {
     country: String,
     city: String,

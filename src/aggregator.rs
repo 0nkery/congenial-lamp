@@ -1,5 +1,7 @@
+use std::collections::HashMap;
+
 use actix::{Actor, Context, Handler, Recipient};
-use futures::{stream, Future, Stream};
+use futures::{future, stream, Future, Stream};
 use itertools::{flatten, Itertools};
 use smallvec::SmallVec;
 
@@ -7,12 +9,14 @@ use apis::{WeatherData, WeatherDataVec, WeatherQuery};
 
 pub struct Aggregator {
     weather_apis: SmallVec<[Recipient<WeatherQuery>; 32]>,
+    cache: HashMap<WeatherQuery, WeatherDataVec>,
 }
 
 impl Aggregator {
     pub fn new() -> Self {
         Self {
             weather_apis: SmallVec::new(),
+            cache: HashMap::new(),
         }
     }
 
@@ -54,22 +58,30 @@ impl Handler<WeatherQuery> for Aggregator {
     type Result = Box<Future<Item = WeatherDataVec, Error = ()>>;
 
     fn handle(&mut self, msg: WeatherQuery, _ctx: &mut Self::Context) -> Self::Result {
-        // TODO: without Clone?
-        let requests = self.weather_apis.iter().map(|api| api.send(msg.clone()));
+        match self.cache.get(&msg) {
+            Some(entry) => {
+                let entry = (*entry).clone();
+                Box::new(future::ok(entry))
+            }
+            None => {
+                // TODO: without Clone?
+                let requests = self.weather_apis.iter().map(|api| api.send(msg.clone()));
 
-        let aggregated_weather_data = stream::futures_unordered(requests)
-            .collect()
-            .map(|results| {
-                let all_data_iter = results
-                    .into_iter()
-                    .filter(|result| result.is_ok())
-                    .map(|result| result.unwrap().into_iter());
+                Box::new(
+                    stream::futures_unordered(requests)
+                        .collect()
+                        .map(|results| {
+                            let all_data_iter = results
+                                .into_iter()
+                                .filter(|result| result.is_ok())
+                                .map(|result| result.unwrap().into_iter());
 
-                let all_data = flatten(all_data_iter).collect();
+                            let all_data = flatten(all_data_iter).collect();
 
-                Self::aggregate(all_data)
-            }).map_err(|_| ());
-
-        Box::new(aggregated_weather_data)
+                            Self::aggregate(all_data)
+                        }).map_err(|_| ()),
+                )
+            }
+        }
     }
 }
