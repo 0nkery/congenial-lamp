@@ -21,6 +21,29 @@ impl Aggregator {
 
         self
     }
+
+    fn aggregate(mut weather_data: WeatherDataVec) -> WeatherDataVec {
+        weather_data.sort_unstable_by(|entry1, entry2| entry1.date.cmp(&entry2.date));
+
+        weather_data
+            .iter()
+            // Нормализуем по дате (во избежание различий во времени - например, секунды отличаются).
+            .group_by(|entry| entry.date.date())
+            .into_iter()
+            .map(|(day, data)| {
+                let (temperature_sum, points_count) = data
+                    .fold((0.0, 0.0), |(sum, count), data| {
+                        (sum + data.temperature, count + 1.0)
+                    });
+
+                let avg_temperature = temperature_sum / points_count;
+
+                WeatherData {
+                    date: day.and_hms(0, 0, 0),
+                    temperature: avg_temperature,
+                }
+            }).collect::<WeatherDataVec>()
+    }
 }
 
 impl Actor for Aggregator {
@@ -44,31 +67,9 @@ impl Handler<WeatherQuery> for Aggregator {
 
                 let all_data = flatten(all_data_iter).collect();
 
-                aggregate_results(all_data)
+                Self::aggregate(all_data)
             }).map_err(|_| ());
 
         Box::new(aggregated_weather_data)
     }
-}
-
-pub fn aggregate_results(mut weather_data: WeatherDataVec) -> WeatherDataVec {
-    weather_data.sort_unstable_by(|entry1, entry2| entry1.date.cmp(&entry2.date));
-
-    weather_data
-        .iter()
-        // Нормализуем по дате (во избежание различий во времени - например, секунды отличаются).
-        .group_by(|entry| entry.date.date())
-        .into_iter()
-        .map(|(day, data)| {
-            let (temperature_sum, points_count) = data.fold((0.0, 0.0), |(sum, count), data| {
-                (sum + data.temperature, count + 1.0)
-            });
-
-            let avg_temperature = temperature_sum / points_count;
-
-            WeatherData {
-                date: day.and_hms(0, 0, 0),
-                temperature: avg_temperature,
-            }
-        }).collect::<WeatherDataVec>()
 }
