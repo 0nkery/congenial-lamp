@@ -1,25 +1,24 @@
 use std::env;
-use std::sync::Arc;
 
-use actix::{Actor, Context, Handler};
 use chrono::{TimeZone, Utc};
-use futures::Future;
-use reqwest::{async::Client, Url, UrlError};
+use reqwest::{Url, UrlError};
 
-use apis::{WeatherData, WeatherDataVec, WeatherQuery};
+use apis::{WeatherAPI, WeatherData, WeatherDataVec, WeatherQuery};
 
 pub struct WeatherBit {
     key: String,
-    client: Arc<Client>,
 }
 
 impl WeatherBit {
-    pub fn new(client: Arc<Client>) -> Result<Self, env::VarError> {
+    pub fn new() -> Result<Self, env::VarError> {
         let key = env::var("WEATHERBIT_API_KEY")?;
 
-        Ok(Self { key, client })
+        Ok(Self { key })
     }
+}
 
+impl WeatherAPI for WeatherBit {
+    type Response = WeatherBitResponse;
     fn make_url(&self, query: &WeatherQuery) -> Result<Url, UrlError> {
         Url::parse_with_params(
             "https://api.weatherbit.io/v2.0/forecast/daily",
@@ -29,28 +28,6 @@ impl WeatherBit {
                 ("country", &query.country),
             ],
         )
-    }
-}
-
-impl Actor for WeatherBit {
-    type Context = Context<Self>;
-}
-
-impl Handler<WeatherQuery> for WeatherBit {
-    type Result = Box<Future<Item = WeatherDataVec, Error = ()>>;
-
-    fn handle(&mut self, msg: WeatherQuery, _ctx: &mut Self::Context) -> Self::Result {
-        let url = self.make_url(&msg).expect("Failed to prepare URL");
-
-        let req = self
-            .client
-            .get(url)
-            .send()
-            .and_then(|mut res| res.json::<WeatherBitResponse>())
-            .map(|res| res.into())
-            .map_err(|_| ());
-
-        Box::new(req)
     }
 }
 

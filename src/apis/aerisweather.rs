@@ -1,30 +1,29 @@
 use std::env;
-use std::sync::Arc;
 
-use actix::{Actor, Context, Handler};
 use chrono::{TimeZone, Utc};
-use futures::Future;
-use reqwest::{async::Client, Url, UrlError};
+use reqwest::{Url, UrlError};
 
-use apis::{WeatherData, WeatherDataVec, WeatherQuery};
+use apis::{WeatherAPI, WeatherData, WeatherDataVec, WeatherQuery};
 
 pub struct AerisWeather {
     client_id: String,
     client_secret: String,
-    client: Arc<Client>,
 }
 
 impl AerisWeather {
-    pub fn new(client: Arc<Client>) -> Result<Self, env::VarError> {
+    pub fn new() -> Result<Self, env::VarError> {
         let client_id = env::var("AERISWEATHER_CLIENT_ID")?;
         let client_secret = env::var("AERISWEATHER_CLIENT_SECRET")?;
 
         Ok(Self {
             client_id,
             client_secret,
-            client,
         })
     }
+}
+
+impl WeatherAPI for AerisWeather {
+    type Response = AerisWeatherResponse;
 
     fn make_url(&self, query: &WeatherQuery) -> Result<Url, UrlError> {
         Url::parse_with_params(
@@ -39,28 +38,6 @@ impl AerisWeather {
                 ("client_secret", &self.client_secret),
             ],
         )
-    }
-}
-
-impl Actor for AerisWeather {
-    type Context = Context<Self>;
-}
-
-impl Handler<WeatherQuery> for AerisWeather {
-    type Result = Box<Future<Item = WeatherDataVec, Error = ()>>;
-
-    fn handle(&mut self, msg: WeatherQuery, _ctx: &mut Self::Context) -> Self::Result {
-        let url = self.make_url(&msg).expect("Failed to prepare URL");
-
-        let req = self
-            .client
-            .get(url)
-            .send()
-            .and_then(|mut res| res.json::<AerisWeatherResponse>())
-            .map(|res| res.into())
-            .map_err(|err| ());
-
-        Box::new(req)
     }
 }
 

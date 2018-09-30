@@ -1,54 +1,32 @@
 use std::env;
-use std::sync::Arc;
 
-use actix::{Actor, Context, Handler};
 use chrono::{TimeZone, Utc};
-use futures::Future;
-use reqwest::{async::Client, Url, UrlError};
+use reqwest::{Url, UrlError};
 
-use apis::{WeatherData, WeatherDataVec, WeatherQuery};
+use apis::{WeatherAPI, WeatherData, WeatherDataVec, WeatherQuery};
 
 pub struct Apixu {
     key: String,
-    client: Arc<Client>,
 }
 
 const MAX_DAYS: &str = "7";
 
 impl Apixu {
-    pub fn new(client: Arc<Client>) -> Result<Self, env::VarError> {
+    pub fn new() -> Result<Self, env::VarError> {
         let key = env::var("APIXU_API_KEY")?;
 
-        Ok(Self { key, client })
+        Ok(Self { key })
     }
+}
+
+impl WeatherAPI for Apixu {
+    type Response = ApixuResponse;
 
     fn make_url(&self, query: &WeatherQuery) -> Result<Url, UrlError> {
         Url::parse_with_params(
             "https://api.apixu.com/v1/forecast.json",
             &[("days", MAX_DAYS), ("q", &query.city), ("key", &self.key)],
         )
-    }
-}
-
-impl Actor for Apixu {
-    type Context = Context<Self>;
-}
-
-impl Handler<WeatherQuery> for Apixu {
-    type Result = Box<Future<Item = WeatherDataVec, Error = ()>>;
-
-    fn handle(&mut self, msg: WeatherQuery, _ctx: &mut Self::Context) -> Self::Result {
-        let url = self.make_url(&msg).expect("Failed to prepare URL");
-
-        let req = self
-            .client
-            .get(url)
-            .send()
-            .and_then(|mut res| res.json::<ApixuResponse>())
-            .map(|res| res.into())
-            .map_err(|_| ());
-
-        Box::new(req)
     }
 }
 

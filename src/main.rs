@@ -22,6 +22,7 @@ use futures::Future;
 
 mod aggregator;
 mod apis;
+mod weather_api;
 
 #[derive(Clone)]
 struct AppState {
@@ -66,23 +67,35 @@ fn main() -> Result<(), Box<::std::error::Error>> {
 
     let client = std::sync::Arc::new(reqwest::async::Client::new());
 
-    let aerisweather = apis::AerisWeather::new(client.clone())?;
-    let aerisweather_actor = actix::Arbiter::start(|_ctx| aerisweather);
+    let aerisweather = {
+        let api = apis::AerisWeather::new()?;
+        let client = client.clone();
+        actix::Arbiter::start(move |_ctx| weather_api::WeatherAPIActor::new(client, api))
+    };
 
-    let apixu = apis::Apixu::new(client.clone())?;
-    let apixu_actor = actix::Arbiter::start(|_ctx| apixu);
+    let apixu = {
+        let api = apis::Apixu::new()?;
+        let client = client.clone();
+        actix::Arbiter::start(move |_ctx| weather_api::WeatherAPIActor::new(client, api))
+    };
 
-    let openweathermap = apis::OpenWeatherMap::new(client.clone())?;
-    let openweathermap_actor = actix::Arbiter::start(|_ctx| openweathermap);
+    let openweathermap = {
+        let api = apis::OpenWeatherMap::new()?;
+        let client = client.clone();
+        actix::Arbiter::start(move |_ctx| weather_api::WeatherAPIActor::new(client, api))
+    };
 
-    let weatherbit = apis::WeatherBit::new(client.clone())?;
-    let weatherbit_actor = actix::Arbiter::start(|_ctx| weatherbit);
+    let weatherbit = {
+        let api = apis::WeatherBit::new()?;
+        let client = client.clone();
+        actix::Arbiter::start(move |_ctx| weather_api::WeatherAPIActor::new(client, api))
+    };
 
     let aggregator = aggregator::Aggregator::new()
-        .add_api(aerisweather_actor.recipient())
-        .add_api(apixu_actor.recipient())
-        .add_api(openweathermap_actor.recipient())
-        .add_api(weatherbit_actor.recipient());
+        .add_api(aerisweather.recipient())
+        .add_api(apixu.recipient())
+        .add_api(openweathermap.recipient())
+        .add_api(weatherbit.recipient());
 
     let aggregator = actix::Arbiter::start(|_ctx| aggregator).recipient();
 
