@@ -21,7 +21,7 @@ pub struct WeatherData {
 
 pub type WeatherDataVec = SmallVec<[WeatherData; 32]>;
 
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct WeatherQuery {
     country: String,
     city: String,

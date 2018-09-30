@@ -17,7 +17,7 @@ extern crate serde_derive;
 extern crate serde;
 extern crate serde_json;
 
-use actix_web::{http, middleware, server, App, HttpResponse, Query};
+use actix_web::{http, middleware, server, App, FromRequest, HttpRequest, HttpResponse, Query};
 use futures::Future;
 
 mod aggregator;
@@ -30,41 +30,32 @@ struct AppState {
 
 unsafe impl Sync for AppState {}
 
-// #[derive(Deserialize)]
-// struct QueryParams {
-//     country: String,
-//     city: String,
-// }
+fn index(
+    req: &HttpRequest<AppState>,
+) -> Box<Future<Item = HttpResponse, Error = actix_web::error::InternalError<&'static str>>> {
+    let query = Query::<apis::WeatherQuery>::extract(req).expect("bad request");
 
-// fn index(
-//     req: Query<QueryParams>,
-// ) -> Box<Future<Item = HttpResponse, Error = actix_web::error::InternalError<&'static str>>> {
-//     let join = req1
-//         .join(req2)
-//         .map(apis::join_two_vecs)
-//         .join(req3)
-//         .map(apis::join_two_vecs)
-//         .join(req4)
-//         .map(apis::join_two_vecs)
-//         .map(|vec| {
-//             if let Some(vec) = vec {
-//                 let aggregate = apis::aggregate_results(vec);
-//                 let body = serde_json::to_string(aggregate.as_slice()).unwrap();
-//                 HttpResponse::Ok()
-//                     .content_type("application/json")
-//                     .body(body)
-//             } else {
-//                 HttpResponse::Ok().finish()
-//             }
-//         }).map_err(|_| {
-//             actix_web::error::InternalError::new(
-//                 "fail",
-//                 actix_web::http::StatusCode::INTERNAL_SERVER_ERROR,
-//             )
-//         });
+    let data = req
+        .state()
+        .aggregator
+        .send(query.into_inner())
+        .map(|res| match res {
+            Ok(res) => {
+                let body = serde_json::to_string(res.as_slice()).unwrap();
+                HttpResponse::Ok()
+                    .content_type("application/json")
+                    .body(body)
+            }
+            _ => HttpResponse::Ok().finish(),
+        }).map_err(|_| {
+            actix_web::error::InternalError::new(
+                "fail",
+                actix_web::http::StatusCode::INTERNAL_SERVER_ERROR,
+            )
+        });
 
-//     Box::new(join)
-// }
+    Box::new(data)
+}
 
 fn main() -> Result<(), Box<::std::error::Error>> {
     let bind_to = std::env::var("ADDRESS").unwrap_or("127.0.0.1:8088".to_string());
@@ -98,8 +89,9 @@ fn main() -> Result<(), Box<::std::error::Error>> {
     let state = AppState { aggregator };
 
     server::new(move || {
-        App::with_state(state.clone()).middleware(middleware::Logger::default())
-        // .resource("/forecast", |r| r.method(http::Method::GET).with(index))
+        App::with_state(state.clone())
+            .middleware(middleware::Logger::default())
+            .resource("/forecast", |r| r.method(http::Method::GET).f(index))
     }).bind(&bind_to)
     .expect(&format!("Failed to bind to address {}", bind_to))
     .start();
