@@ -27,6 +27,8 @@ pub struct WeatherQuery {
     city: String,
 }
 
+unsafe impl Sync for WeatherQuery {}
+
 impl Message for WeatherQuery {
     // TODO: more descriptive Error
     type Result = Result<WeatherDataVec, ()>;

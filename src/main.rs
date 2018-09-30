@@ -23,6 +23,13 @@ use futures::Future;
 mod aggregator;
 mod apis;
 
+#[derive(Clone)]
+struct AppState {
+    aggregator: actix::Recipient<apis::WeatherQuery>,
+}
+
+unsafe impl Sync for AppState {}
+
 // #[derive(Deserialize)]
 // struct QueryParams {
 //     country: String,
@@ -86,10 +93,12 @@ fn main() -> Result<(), Box<::std::error::Error>> {
         .add_api(openweathermap_actor.recipient())
         .add_api(weatherbit_actor.recipient());
 
-    actix::Arbiter::start(|_ctx| aggregator);
+    let aggregator = actix::Arbiter::start(|_ctx| aggregator).recipient();
 
-    server::new(|| {
-        App::new().middleware(middleware::Logger::default())
+    let state = AppState { aggregator };
+
+    server::new(move || {
+        App::with_state(state.clone()).middleware(middleware::Logger::default())
         // .resource("/forecast", |r| r.method(http::Method::GET).with(index))
     }).bind(&bind_to)
     .expect(&format!("Failed to bind to address {}", bind_to))
