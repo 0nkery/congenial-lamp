@@ -51,7 +51,7 @@ impl Aggregator {
             }).collect::<WeatherDataVec>()
     }
 
-    fn duration_til_cache_cleanup(&mut self) -> time::Duration {
+    fn duration_til_next_midnight(&mut self) -> time::Duration {
         let now = Utc::now();
         let next_midnignt = (now + Duration::days(1)).date().and_hms(0, 0, 0);
 
@@ -66,7 +66,7 @@ impl Actor for Aggregator {
     type Context = Context<Self>;
 
     fn started(&mut self, ctx: &mut Self::Context) {
-        let at_midnight = self.duration_til_cache_cleanup();
+        let at_midnight = self.duration_til_next_midnight();
         ctx.notify_later(CacheCleanup, at_midnight);
     }
 }
@@ -78,7 +78,7 @@ impl Handler<CacheCleanup> for Aggregator {
         self.cache.clear();
         self.cache.shrink_to_fit();
 
-        let at_midnight = self.duration_til_cache_cleanup();
+        let at_midnight = self.duration_til_next_midnight();
         ctx.notify_later(CacheCleanup, at_midnight);
     }
 }
