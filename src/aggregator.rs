@@ -1,6 +1,9 @@
 use std::collections::HashMap;
+use std::time;
 
-use actix::{fut::wrap_future, Actor, ActorFuture, Context, Handler, Recipient, ResponseActFuture};
+use actix::fut::wrap_future;
+use actix::prelude::*;
+use chrono::{Duration, Utc};
 use futures::{future, stream, Future, Stream};
 use itertools::{flatten, Itertools};
 use smallvec::SmallVec;
@@ -47,10 +50,37 @@ impl Aggregator {
                 }
             }).collect::<WeatherDataVec>()
     }
+
+    fn duration_til_cache_cleanup(&mut self) -> time::Duration {
+        let now = Utc::now();
+        let next_midnignt = (now + Duration::days(1)).date().and_hms(0, 0, 0);
+
+        next_midnignt.signed_duration_since(now).to_std().unwrap()
+    }
 }
+
+#[derive(Message)]
+struct CacheCleanup;
 
 impl Actor for Aggregator {
     type Context = Context<Self>;
+
+    fn started(&mut self, ctx: &mut Self::Context) {
+        let at_midnight = self.duration_til_cache_cleanup();
+        ctx.notify_later(CacheCleanup, at_midnight);
+    }
+}
+
+impl Handler<CacheCleanup> for Aggregator {
+    type Result = ();
+
+    fn handle(&mut self, _msg: CacheCleanup, ctx: &mut Self::Context) -> Self::Result {
+        self.cache.clear();
+        self.cache.shrink_to_fit();
+
+        let at_midnight = self.duration_til_cache_cleanup();
+        ctx.notify_later(CacheCleanup, at_midnight);
+    }
 }
 
 impl Handler<WeatherQuery> for Aggregator {
