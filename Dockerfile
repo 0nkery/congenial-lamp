@@ -1,26 +1,23 @@
 # Build image
 
-FROM rust:latest as build
-
-WORKDIR /tmp/build
+FROM ekidd/rust-musl-builder:latest as build
 
 COPY . .
 RUN cargo build --release
 
 # Executable image
 
-FROM alpine:3.6
+FROM alpine:latest
 
-WORKDIR /opt/app
+COPY --from=build /home/rust/src/target/x86_64-unknown-linux-musl/release/congenial-lamp \
+    /usr/local/bin/
 
-COPY --from=build /tmp/build/target/release/congenial-lamp .
+ENV AERISWEATHER_CLIENT_ID ""
+ENV AERISWEATHER_CLIENT_SECRET ""
+ENV APIXU_API_KEY ""
+ENV OPENWEATHERMAP_API_KEY ""
+ENV WEATHERBIT_API_KEY ""
+ENV ADDRESS "0.0.0.0:8000"
+ENV RUST_LOG "info"
 
-ENV AERISWEATHER_CLIENT_ID
-ENV AERISWEATHER_CLIENT_SECRET
-ENV APIXU_API_KEY
-ENV OPENWEATHERMAP_API_KEY
-ENV WEATHERBIT_API_KEY
-ENV ADDRESS
-
-ENTRYPOINT [ "/opt/app/congenial-lamp" ]
-CMD [ ]
+CMD [ "/usr/local/bin/congenial-lamp" ]
