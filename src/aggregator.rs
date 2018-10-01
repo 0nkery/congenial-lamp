@@ -1,8 +1,6 @@
 use std::collections::HashMap;
 
-use actix::{
-    fut::wrap_future, Actor, ActorFuture, Context, Handler, Message, Recipient, ResponseActFuture,
-};
+use actix::{fut::wrap_future, Actor, ActorFuture, Context, Handler, Recipient, ResponseActFuture};
 use futures::{future, stream, Future, Stream};
 use itertools::{flatten, Itertools};
 use smallvec::SmallVec;

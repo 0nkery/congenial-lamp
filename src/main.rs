@@ -18,61 +18,15 @@ extern crate serde;
 extern crate serde_json;
 
 use actix::{Arbiter, Recipient};
-use actix_web::{http, middleware, server, App, FromRequest, HttpRequest, HttpResponse, Path};
-use futures::Future;
+use actix_web::server;
 
 mod aggregator;
 mod apis;
 mod weather_api;
+mod web_api;
 
 use apis::WeatherQuery;
 use weather_api::WeatherAPIActor;
-
-#[derive(Clone)]
-struct AppState {
-    aggregator: Recipient<WeatherQuery>,
-}
-
-unsafe impl Sync for AppState {}
-
-fn daily_forecast(
-    req: &HttpRequest<AppState>,
-) -> Box<Future<Item = HttpResponse, Error = actix_web::error::InternalError<&'static str>>> {
-    let (country, city, day) = Path::<(String, String, String)>::extract(req)
-        .expect("bad request")
-        .into_inner();
-
-    let day = chrono::NaiveDate::parse_from_str(&day, "%Y-%m-%d").expect("Failed to parse date");
-
-    let query = WeatherQuery::new(country, city);
-
-    let data = req
-        .state()
-        .aggregator
-        .send(query)
-        .map(move |res| match res {
-            Ok(res) => {
-                let res = res.iter().find(|e| e.date == day);
-
-                if let Some(res) = res {
-                    let body = serde_json::to_string(res).unwrap();
-                    HttpResponse::Ok()
-                        .content_type("application/json")
-                        .body(body)
-                } else {
-                    HttpResponse::Ok().finish()
-                }
-            }
-            _ => HttpResponse::Ok().finish(),
-        }).map_err(|_| {
-            actix_web::error::InternalError::new(
-                "fail",
-                actix_web::http::StatusCode::INTERNAL_SERVER_ERROR,
-            )
-        });
-
-    Box::new(data)
-}
 
 fn init_aggregator() -> Recipient<WeatherQuery> {
     let client = std::sync::Arc::new(reqwest::async::Client::new());
@@ -117,15 +71,9 @@ fn main() {
 
     let sys = actix::System::new("forecast");
 
-    let aggregator = init_aggregator();
-    let state = AppState { aggregator };
-
-    server::new(move || {
-        App::with_state(state.clone())
-            .middleware(middleware::Logger::default())
-            .resource("/forecast/daily/{country}/{city}/{day}", |r| {
-                r.method(http::Method::GET).f(daily_forecast)
-            })
+    server::new(|| {
+        let aggregator = init_aggregator();
+        web_api::WebAPI::new(aggregator)
     }).bind(&bind_to)
     .unwrap_or_else(|err| panic!("Failed to bind to address {} due to {}", bind_to, err))
     .start();
