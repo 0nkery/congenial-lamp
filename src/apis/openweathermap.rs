@@ -66,7 +66,7 @@ impl Into<WeatherDataVec> for OWMResponse {
                 let avg_temperature = temperature_sum / points_count;
 
                 WeatherData {
-                    date: day.and_hms(0, 0, 0),
+                    date: day.naive_utc(),
                     temperature: avg_temperature,
                 }
             }).collect::<WeatherDataVec>()

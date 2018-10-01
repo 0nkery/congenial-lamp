@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 
-use actix::{fut::wrap_future, Actor, ActorFuture, Context, Handler, Recipient, ResponseActFuture};
+use actix::{
+    fut::wrap_future, Actor, ActorFuture, Context, Handler, Message, Recipient, ResponseActFuture,
+};
 use futures::{future, stream, Future, Stream};
 use itertools::{flatten, Itertools};
 use smallvec::SmallVec;
@@ -31,8 +33,7 @@ impl Aggregator {
 
         weather_data
             .iter()
-            // Нормализуем по дате (во избежание различий во времени - например, секунды отличаются).
-            .group_by(|entry| entry.date.date())
+            .group_by(|entry| entry.date)
             .into_iter()
             .map(|(day, data)| {
                 let (temperature_sum, points_count) = data
@@ -43,7 +44,7 @@ impl Aggregator {
                 let avg_temperature = temperature_sum / points_count;
 
                 WeatherData {
-                    date: day.and_hms(0, 0, 0),
+                    date: day,
                     temperature: avg_temperature,
                 }
             }).collect::<WeatherDataVec>()

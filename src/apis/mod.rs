@@ -9,7 +9,7 @@ pub use self::openweathermap::OpenWeatherMap;
 pub use self::weatherbit::WeatherBit;
 
 use actix::Message;
-use chrono::{DateTime, Utc};
+use chrono::NaiveDate;
 use reqwest::{Method, Url, UrlError};
 use smallvec::SmallVec;
 
@@ -17,7 +17,7 @@ use smallvec::SmallVec;
 pub struct WeatherData {
     pub temperature: f32,
     // `DateTime`, потому что `chrono` не умеет serde для `Date`.
-    pub date: DateTime<Utc>,
+    pub date: NaiveDate,
 }
 
 pub type WeatherDataVec = SmallVec<[WeatherData; 32]>;
@@ -26,6 +26,12 @@ pub type WeatherDataVec = SmallVec<[WeatherData; 32]>;
 pub struct WeatherQuery {
     country: String,
     city: String,
+}
+
+impl WeatherQuery {
+    pub fn new(country: String, city: String) -> Self {
+        Self { country, city }
+    }
 }
 
 unsafe impl Sync for WeatherQuery {}
