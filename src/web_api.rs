@@ -8,26 +8,38 @@ use apis::{WeatherData, WeatherQuery};
 
 #[derive(Fail, Debug)]
 enum APIError {
-    #[fail(display = "failed to parse date {}", _0)]
+    #[fail(display = "failed to parse date - {}", _0)]
     InvalidDate(ParseError),
-    #[fail(display = "invalid parameters {}", _0)]
+    #[fail(display = "invalid parameters - {}", _0)]
     BadRequest(error::Error),
-    #[fail(display = "weather data not found for day {}", _0)]
+    #[fail(display = "weather data not found for given day - {}", _0)]
     NotFound(NaiveDate),
-    #[fail(display = "unexpected error during request {}", _0)]
+    #[fail(display = "unexpected error during request - {}", _0)]
     UnexpectedError(Error),
+}
+
+#[derive(Serialize)]
+struct APIErrorResponse {
+    error: String,
 }
 
 impl error::ResponseError for APIError {
     fn error_response(&self) -> HttpResponse {
+        let status_code = match *self {
+            APIError::InvalidDate(_) | APIError::BadRequest(_) => http::StatusCode::BAD_REQUEST,
+            APIError::NotFound(_) => http::StatusCode::NOT_FOUND,
+            APIError::UnexpectedError(_) => http::StatusCode::INTERNAL_SERVER_ERROR,
+        };
+
+        let mut builder = HttpResponse::build(status_code);
+
         match *self {
-            APIError::InvalidDate(_) | APIError::BadRequest(_) => {
-                HttpResponse::new(http::StatusCode::BAD_REQUEST)
-            }
-            APIError::NotFound(_) => HttpResponse::new(http::StatusCode::NOT_FOUND),
-            APIError::UnexpectedError(_) => {
-                HttpResponse::new(http::StatusCode::INTERNAL_SERVER_ERROR)
-            }
+            APIError::UnexpectedError(_) => builder.json(APIErrorResponse {
+                error: "An internal error occurred. Please try again later.".to_string(),
+            }),
+            _ => builder.json(APIErrorResponse {
+                error: format!("{}", self),
+            }),
         }
     }
 }
