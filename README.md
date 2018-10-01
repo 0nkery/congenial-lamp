@@ -34,4 +34,11 @@ cargo build --release
 ```shell
 docker build -t forecast:latest .
 docker run -e "AERISWEATHER_CLIENT_ID=client_id" -e "ADDRESS=0.0.0.0:8000" ... -d --rm -p 8000:8000 forecast:latest
+curl http://localhost:8000/forecast/weekly/UK/London
 ```
+
+# Endpoints
+
+* `forecast/daily/{COUNTRY}/{CITY}/{DAY}` - прогноз на день для заданного города. Дата должна быть в формате YYYY-MM-DD,
+например, `2018-10-02`.
+* `forecast/weekly/{COUNTRY}/{CITY}` - прогноз на 5 дней для заданного города.
