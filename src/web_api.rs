@@ -1,10 +1,44 @@
 use actix::Recipient;
-use actix_web::{error, http, middleware, App, FromRequest, HttpRequest, HttpResponse, Path};
-use chrono::NaiveDate;
+use actix_web::{error, http, middleware, App, FromRequest, HttpRequest, HttpResponse, Json, Path};
+use chrono::{NaiveDate, ParseError};
+use failure::Error;
 use futures::Future;
-use serde_json;
 
-use apis::WeatherQuery;
+use apis::{WeatherData, WeatherDataVec, WeatherQuery};
+
+#[derive(Fail, Debug)]
+enum APIError {
+    #[fail(display = "failed to parse date {}", _0)]
+    InvalidDate(ParseError),
+    #[fail(display = "invalid parameters {}", _0)]
+    BadRequest(error::Error),
+    #[fail(display = "weather data not found for day {}", _0)]
+    NotFound(NaiveDate),
+    #[fail(display = "unexpected error during request {}", _0)]
+    UnexpectedError(Error),
+}
+
+impl error::ResponseError for APIError {
+    fn error_response(&self) -> HttpResponse {
+        match *self {
+            APIError::InvalidDate(_) | APIError::BadRequest(_) => {
+                HttpResponse::new(http::StatusCode::BAD_REQUEST)
+            }
+            APIError::NotFound(_) => HttpResponse::new(http::StatusCode::NOT_FOUND),
+            APIError::UnexpectedError(_) => {
+                HttpResponse::new(http::StatusCode::INTERNAL_SERVER_ERROR)
+            }
+        }
+    }
+}
+
+type APIResponder<D> = Box<Future<Item = Result<Json<D>, APIError>, Error = APIError>>;
+
+impl APIError {
+    fn into_responder<D: 'static>(self) -> APIResponder<D> {
+        Box::new(::futures::future::err(self))
+    }
+}
 
 pub struct WebAPI {
     aggregator: Recipient<WeatherQuery>,
@@ -23,14 +57,16 @@ impl WebAPI {
             })
     }
 
-    fn daily_forecast(
-        req: &HttpRequest<Self>,
-    ) -> Box<Future<Item = HttpResponse, Error = error::InternalError<&'static str>>> {
-        let (country, city, day) = Path::<(String, String, String)>::extract(req)
-            .expect("bad request")
-            .into_inner();
+    fn daily_forecast(req: &HttpRequest<Self>) -> APIResponder<WeatherData> {
+        let (country, city, day) = match Path::<(String, String, String)>::extract(req) {
+            Ok(params) => params.into_inner(),
+            Err(reason) => return APIError::BadRequest(reason).into_responder(),
+        };
 
-        let day = NaiveDate::parse_from_str(&day, "%Y-%m-%d").expect("Failed to parse date");
+        let day = match NaiveDate::parse_from_str(&day, "%Y-%m-%d") {
+            Ok(day) => day,
+            Err(reason) => return APIError::InvalidDate(reason).into_responder(),
+        };
 
         let query = WeatherQuery::new(country, city);
 
@@ -39,32 +75,22 @@ impl WebAPI {
             .aggregator
             .send(query)
             .map(move |res| match res {
-                Ok(res) => {
-                    let res = res.iter().find(|e| e.date == day);
-
-                    if let Some(res) = res {
-                        let body = serde_json::to_string(res).unwrap();
-                        HttpResponse::Ok()
-                            .content_type("application/json")
-                            .body(body)
-                    } else {
-                        HttpResponse::Ok().finish()
-                    }
-                }
-                _ => HttpResponse::Ok().finish(),
-            }).map_err(|_| {
-                error::InternalError::new("fail", http::StatusCode::INTERNAL_SERVER_ERROR)
-            });
+                Ok(res) => res
+                    .iter()
+                    .find(|e| e.date == day)
+                    .ok_or(APIError::NotFound(day))
+                    .and_then(|res| Ok(Json(res.clone()))),
+                Err(reason) => Err(APIError::UnexpectedError(Error::from(reason))),
+            }).map_err(|err| APIError::UnexpectedError(Error::from(err)));
 
         Box::new(data)
     }
 
-    fn weekly_forecast(
-        req: &HttpRequest<Self>,
-    ) -> Box<Future<Item = HttpResponse, Error = error::InternalError<&'static str>>> {
-        let query = Path::<WeatherQuery>::extract(req)
-            .expect("Bad request")
-            .into_inner();
+    fn weekly_forecast(req: &HttpRequest<Self>) -> APIResponder<[Option<WeatherData>; 5]> {
+        let query = match Path::<WeatherQuery>::extract(req) {
+            Ok(query) => query.into_inner(),
+            Err(reason) => return APIError::BadRequest(reason).into_responder(),
+        };
 
         let data = req
             .state()
@@ -72,15 +98,14 @@ impl WebAPI {
             .send(query)
             .map(|res| match res {
                 Ok(res) => {
-                    let body = serde_json::to_string(&res[0..5]).unwrap();
-                    HttpResponse::Ok()
-                        .content_type("application/json")
-                        .body(body)
+                    let mut data: [Option<WeatherData>; 5] = Default::default();
+                    for (i, entry) in res.into_iter().take(5).enumerate() {
+                        data[i] = Some(entry);
+                    }
+                    Ok(Json(data))
                 }
-                _ => HttpResponse::Ok().finish(),
-            }).map_err(|_| {
-                error::InternalError::new("fail", http::StatusCode::INTERNAL_SERVER_ERROR)
-            });
+                Err(reason) => Err(APIError::UnexpectedError(Error::from(reason))),
+            }).map_err(|err| APIError::UnexpectedError(Error::from(err)));
 
         Box::new(data)
     }

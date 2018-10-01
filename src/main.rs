@@ -11,6 +11,7 @@ extern crate smallvec;
 extern crate env_logger;
 #[macro_use]
 extern crate log;
+#[macro_use]
 extern crate failure;
 
 #[macro_use]
