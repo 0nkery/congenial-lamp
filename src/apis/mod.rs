@@ -16,7 +16,6 @@ use smallvec::SmallVec;
 #[derive(Debug, Serialize, Clone)]
 pub struct WeatherData {
     pub temperature: f32,
-    // `DateTime`, потому что `chrono` не умеет serde для `Date`.
     pub date: NaiveDate,
 }
 
