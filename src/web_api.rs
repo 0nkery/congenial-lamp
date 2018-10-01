@@ -4,7 +4,7 @@ use chrono::{NaiveDate, ParseError};
 use failure::Error;
 use futures::Future;
 
-use apis::{WeatherData, WeatherDataVec, WeatherQuery};
+use apis::{WeatherData, WeatherQuery};
 
 #[derive(Fail, Debug)]
 enum APIError {
