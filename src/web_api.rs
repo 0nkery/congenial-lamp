@@ -59,7 +59,29 @@ impl WebAPI {
         Box::new(data)
     }
 
-    fn weekly_forecast(req: &HttpRequest<Self>) -> HttpResponse {
-        HttpResponse::Ok().finish()
+    fn weekly_forecast(
+        req: &HttpRequest<Self>,
+    ) -> Box<Future<Item = HttpResponse, Error = error::InternalError<&'static str>>> {
+        let query = Path::<WeatherQuery>::extract(req)
+            .expect("Bad request")
+            .into_inner();
+
+        let data = req
+            .state()
+            .aggregator
+            .send(query)
+            .map(|res| match res {
+                Ok(res) => {
+                    let body = serde_json::to_string(&res[0..5]).unwrap();
+                    HttpResponse::Ok()
+                        .content_type("application/json")
+                        .body(body)
+                }
+                _ => HttpResponse::Ok().finish(),
+            }).map_err(|_| {
+                error::InternalError::new("fail", http::StatusCode::INTERNAL_SERVER_ERROR)
+            });
+
+        Box::new(data)
     }
 }
