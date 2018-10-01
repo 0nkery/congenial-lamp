@@ -1,8 +1,9 @@
 use std::env;
 
 use chrono::{TimeZone, Utc};
+use failure::Error;
 use itertools::Itertools;
-use reqwest::{Url, UrlError};
+use reqwest::Url;
 
 use apis::{WeatherAPI, WeatherData, WeatherDataVec, WeatherQuery};
 
@@ -11,7 +12,7 @@ pub struct OpenWeatherMap {
 }
 
 impl OpenWeatherMap {
-    pub fn new() -> Result<Self, env::VarError> {
+    pub fn new() -> Result<Self, Error> {
         let app_id = env::var("OPENWEATHERMAP_API_KEY")?;
 
         Ok(Self { app_id })
@@ -21,15 +22,15 @@ impl OpenWeatherMap {
 impl WeatherAPI for OpenWeatherMap {
     type Response = OWMResponse;
 
-    fn make_url(&self, query: &WeatherQuery) -> Result<Url, UrlError> {
-        Url::parse_with_params(
+    fn make_url(&self, query: &WeatherQuery) -> Result<Url, Error> {
+        Ok(Url::parse_with_params(
             "https://api.openweathermap.org/data/2.5/forecast",
             &[
                 ("units", "metric"),
                 ("q", &query.city),
                 ("APPID", &self.app_id),
             ],
-        )
+        )?)
     }
 }
 

@@ -4,6 +4,7 @@ use std::time;
 use actix::fut::wrap_future;
 use actix::prelude::*;
 use chrono::{Duration, Utc};
+use failure::Error;
 use futures::{future, stream, Future, Stream};
 use itertools::{flatten, Itertools};
 use smallvec::SmallVec;
@@ -14,6 +15,8 @@ pub struct Aggregator {
     weather_apis: SmallVec<[Recipient<WeatherQuery>; 32]>,
     cache: HashMap<WeatherQuery, WeatherDataVec>,
 }
+
+unsafe impl Sync for Aggregator {}
 
 impl Aggregator {
     pub fn new() -> Self {
@@ -84,7 +87,7 @@ impl Handler<CacheCleanup> for Aggregator {
 }
 
 impl Handler<WeatherQuery> for Aggregator {
-    type Result = ResponseActFuture<Self, WeatherDataVec, ()>;
+    type Result = ResponseActFuture<Self, WeatherDataVec, Error>;
 
     fn handle(&mut self, msg: WeatherQuery, _ctx: &mut Self::Context) -> Self::Result {
         match self.cache.get(&msg) {
@@ -93,7 +96,6 @@ impl Handler<WeatherQuery> for Aggregator {
                 Box::new(wrap_future(entry_fut))
             }
             None => {
-                // TODO: without Clone? Rc?
                 let requests = self.weather_apis.iter().map(|api| api.send(msg.clone()));
 
                 let aggregated_data = stream::futures_unordered(requests)
@@ -107,7 +109,7 @@ impl Handler<WeatherQuery> for Aggregator {
                         let all_data = flatten(all_data_iter).collect();
 
                         Self::aggregate(all_data)
-                    }).map_err(|_| ());
+                    }).map_err(|err| Error::from(err));
 
                 let msg = msg.clone();
                 let update_self =

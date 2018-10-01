@@ -1,7 +1,8 @@
 use std::env;
 
 use chrono::{TimeZone, Utc};
-use reqwest::{Url, UrlError};
+use failure::Error;
+use reqwest::Url;
 
 use apis::{WeatherAPI, WeatherData, WeatherDataVec, WeatherQuery};
 
@@ -11,7 +12,7 @@ pub struct AerisWeather {
 }
 
 impl AerisWeather {
-    pub fn new() -> Result<Self, env::VarError> {
+    pub fn new() -> Result<Self, Error> {
         let client_id = env::var("AERISWEATHER_CLIENT_ID")?;
         let client_secret = env::var("AERISWEATHER_CLIENT_SECRET")?;
 
@@ -25,8 +26,8 @@ impl AerisWeather {
 impl WeatherAPI for AerisWeather {
     type Response = AerisWeatherResponse;
 
-    fn make_url(&self, query: &WeatherQuery) -> Result<Url, UrlError> {
-        Url::parse_with_params(
+    fn make_url(&self, query: &WeatherQuery) -> Result<Url, Error> {
+        Ok(Url::parse_with_params(
             &format!(
                 "https://api.aerisapi.com/forecasts/{},{}",
                 query.city, query.country
@@ -37,7 +38,7 @@ impl WeatherAPI for AerisWeather {
                 ("client_id", &self.client_id),
                 ("client_secret", &self.client_secret),
             ],
-        )
+        )?)
     }
 }
 

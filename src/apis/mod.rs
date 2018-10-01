@@ -10,7 +10,8 @@ pub use self::weatherbit::WeatherBit;
 
 use actix::Message;
 use chrono::NaiveDate;
-use reqwest::{Method, Url, UrlError};
+use failure::Error;
+use reqwest::{Method, Url};
 use smallvec::SmallVec;
 
 #[derive(Debug, Serialize, Clone)]
@@ -33,16 +34,13 @@ impl WeatherQuery {
     }
 }
 
-unsafe impl Sync for WeatherQuery {}
-
 impl Message for WeatherQuery {
-    // TODO: more descriptive Error
-    type Result = Result<WeatherDataVec, ()>;
+    type Result = Result<WeatherDataVec, Error>;
 }
 
 pub trait WeatherAPI {
     const METHOD: Method = Method::GET;
     type Response: Into<WeatherDataVec>;
 
-    fn make_url(&self, query: &WeatherQuery) -> Result<Url, UrlError>;
+    fn make_url(&self, query: &WeatherQuery) -> Result<Url, Error>;
 }

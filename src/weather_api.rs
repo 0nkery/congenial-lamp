@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use actix::{Actor, Context, Handler};
+use failure::Error;
 use futures::Future;
 use reqwest::async::Client;
 
@@ -36,7 +37,7 @@ where
     R: Into<WeatherDataVec> + 'static,
     R: for<'de> ::serde::Deserialize<'de>,
 {
-    type Result = Box<Future<Item = WeatherDataVec, Error = ()>>;
+    type Result = Box<Future<Item = WeatherDataVec, Error = Error>>;
 
     fn handle(&mut self, msg: WeatherQuery, _ctx: &mut Self::Context) -> Self::Result {
         let url = self.api.make_url(&msg).expect("Failed to prepare URL");
@@ -47,7 +48,7 @@ where
             .send()
             .and_then(|mut res| res.json::<A::Response>())
             .map(|res| res.into())
-            .map_err(|_| ());
+            .map_err(|err| Error::from(err));
 
         Box::new(req)
     }

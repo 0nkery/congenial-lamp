@@ -1,7 +1,8 @@
 use std::env;
 
 use chrono::{TimeZone, Utc};
-use reqwest::{Url, UrlError};
+use failure::Error;
+use reqwest::Url;
 
 use apis::{WeatherAPI, WeatherData, WeatherDataVec, WeatherQuery};
 
@@ -10,7 +11,7 @@ pub struct WeatherBit {
 }
 
 impl WeatherBit {
-    pub fn new() -> Result<Self, env::VarError> {
+    pub fn new() -> Result<Self, Error> {
         let key = env::var("WEATHERBIT_API_KEY")?;
 
         Ok(Self { key })
@@ -19,15 +20,15 @@ impl WeatherBit {
 
 impl WeatherAPI for WeatherBit {
     type Response = WeatherBitResponse;
-    fn make_url(&self, query: &WeatherQuery) -> Result<Url, UrlError> {
-        Url::parse_with_params(
+    fn make_url(&self, query: &WeatherQuery) -> Result<Url, Error> {
+        Ok(Url::parse_with_params(
             "https://api.weatherbit.io/v2.0/forecast/daily",
             &[
                 ("key", &self.key),
                 ("city", &query.city),
                 ("country", &query.country),
             ],
-        )
+        )?)
     }
 }
 

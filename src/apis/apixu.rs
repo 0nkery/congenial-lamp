@@ -1,7 +1,8 @@
 use std::env;
 
 use chrono::{TimeZone, Utc};
-use reqwest::{Url, UrlError};
+use failure::Error;
+use reqwest::Url;
 
 use apis::{WeatherAPI, WeatherData, WeatherDataVec, WeatherQuery};
 
@@ -12,7 +13,7 @@ pub struct Apixu {
 const MAX_DAYS: &str = "7";
 
 impl Apixu {
-    pub fn new() -> Result<Self, env::VarError> {
+    pub fn new() -> Result<Self, Error> {
         let key = env::var("APIXU_API_KEY")?;
 
         Ok(Self { key })
@@ -22,11 +23,11 @@ impl Apixu {
 impl WeatherAPI for Apixu {
     type Response = ApixuResponse;
 
-    fn make_url(&self, query: &WeatherQuery) -> Result<Url, UrlError> {
-        Url::parse_with_params(
+    fn make_url(&self, query: &WeatherQuery) -> Result<Url, Error> {
+        Ok(Url::parse_with_params(
             "https://api.apixu.com/v1/forecast.json",
             &[("days", MAX_DAYS), ("q", &query.city), ("key", &self.key)],
-        )
+        )?)
     }
 }
 

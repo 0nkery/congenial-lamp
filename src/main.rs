@@ -11,46 +11,48 @@ extern crate smallvec;
 extern crate env_logger;
 #[macro_use]
 extern crate log;
+extern crate failure;
 
 #[macro_use]
 extern crate serde_derive;
 extern crate serde;
 extern crate serde_json;
 
-use actix::{Arbiter, Recipient};
+use actix::{Addr, Arbiter};
 use actix_web::server;
+use failure::Error;
 
 mod aggregator;
 mod apis;
 mod weather_api;
 mod web_api;
 
-use apis::WeatherQuery;
+use aggregator::Aggregator;
 use weather_api::WeatherAPIActor;
 
-fn init_aggregator() -> Recipient<WeatherQuery> {
+fn init_aggregator() -> Result<Addr<Aggregator>, Error> {
     let client = std::sync::Arc::new(reqwest::async::Client::new());
 
     let aerisweather = {
-        let api = apis::AerisWeather::new().expect("Failed to init AerisWeather API");
+        let api = apis::AerisWeather::new()?;
         let client = client.clone();
         Arbiter::start(move |_ctx| WeatherAPIActor::new(client, api))
     };
 
     let apixu = {
-        let api = apis::Apixu::new().expect("Failed to init Apixu API");
+        let api = apis::Apixu::new()?;
         let client = client.clone();
         Arbiter::start(move |_ctx| WeatherAPIActor::new(client, api))
     };
 
     let openweathermap = {
-        let api = apis::OpenWeatherMap::new().expect("Failed to init OpenWeatherMap API");
+        let api = apis::OpenWeatherMap::new()?;
         let client = client.clone();
         Arbiter::start(move |_ctx| WeatherAPIActor::new(client, api))
     };
 
     let weatherbit = {
-        let api = apis::WeatherBit::new().expect("Failed to init WeatherBit");
+        let api = apis::WeatherBit::new()?;
         let client = client.clone();
         Arbiter::start(move |_ctx| WeatherAPIActor::new(client, api))
     };
@@ -61,23 +63,26 @@ fn init_aggregator() -> Recipient<WeatherQuery> {
         .add_api(openweathermap.recipient())
         .add_api(weatherbit.recipient());
 
-    Arbiter::start(|_ctx| aggregator).recipient()
+    Ok(Arbiter::start(|_ctx| aggregator))
 }
 
-fn main() {
+fn main() -> Result<(), Error> {
     let bind_to = std::env::var("ADDRESS").unwrap_or_else(|_| "127.0.0.1:8088".to_string());
 
     env_logger::init();
 
     let sys = actix::System::new("forecast");
 
-    server::new(|| {
-        let aggregator = init_aggregator();
-        web_api::WebAPI::new(aggregator)
-    }).bind(&bind_to)
-    .unwrap_or_else(|err| panic!("Failed to bind to address {} due to {}", bind_to, err))
+    let aggregator = init_aggregator()?;
+
+    server::new(move || {
+        let addr = aggregator.clone().recipient();
+        web_api::WebAPI::new(addr)
+    }).bind(&bind_to)?
     .start();
 
     info!("Running server on {}", bind_to);
     sys.run();
+
+    Ok(())
 }
