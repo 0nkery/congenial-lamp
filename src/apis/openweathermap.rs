@@ -74,3 +74,37 @@ impl Into<WeatherDataVec> for OWMResponse {
             }).collect::<WeatherDataVec>()
     }
 }
+
+#[cfg(test)]
+mod test {
+
+    use chrono::{Datelike, Duration, Utc};
+
+    use super::*;
+
+    #[test]
+    fn aggregates_responses() {
+        let mut now = Utc::now();
+        let mut entries = Vec::new();
+
+        for _ in 0..40 {
+            now = now + Duration::hours(3);
+            entries.push(OWMDataEntry {
+                dt: now.timestamp(),
+                main: OWMMainSection {
+                    temp: now.day() as f32,
+                },
+            });
+        }
+
+        let owm_response = OWMResponse { list: entries };
+
+        let weather_data_vec: WeatherDataVec = owm_response.into();
+
+        assert!(weather_data_vec.len() == 5 || weather_data_vec.len() == 6);
+
+        for entry in weather_data_vec {
+            assert_eq!(entry.temperature, entry.date.day() as f32);
+        }
+    }
+}

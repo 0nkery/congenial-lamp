@@ -125,3 +125,40 @@ impl Handler<WeatherQuery> for Aggregator {
         }
     }
 }
+
+#[cfg(test)]
+mod test {
+
+    use super::*;
+    use chrono::{Duration, Utc};
+
+    #[test]
+    fn aggregates_results() {
+        let mut results = WeatherDataVec::new();
+        let now = Utc::now().naive_utc().date();
+        let tomorrow = now + Duration::days(2);
+
+        results.push(WeatherData {
+            date: now,
+            temperature: 1.0,
+        });
+        results.push(WeatherData {
+            date: now,
+            temperature: 2.0,
+        });
+        results.push(WeatherData {
+            date: tomorrow,
+            temperature: 6.0,
+        });
+        results.push(WeatherData {
+            date: tomorrow,
+            temperature: 10.0,
+        });
+
+        let aggregated = Aggregator::aggregate(results);
+
+        assert_eq!(aggregated.len(), 2);
+        assert_eq!(aggregated[0].temperature, 1.5);
+        assert_eq!(aggregated[1].temperature, 8.0);
+    }
+}
