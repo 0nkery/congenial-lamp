@@ -6,6 +6,7 @@ use reqwest::Url;
 
 use apis::{WeatherAPI, WeatherData, WeatherDataVec, WeatherQuery};
 
+/// https://www.weatherbit.io/api/weather-forecast-16-day
 pub struct WeatherBit {
     key: String,
 }

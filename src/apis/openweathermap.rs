@@ -7,6 +7,7 @@ use reqwest::Url;
 
 use apis::{WeatherAPI, WeatherData, WeatherDataVec, WeatherQuery};
 
+/// https://openweathermap.org/forecast5
 pub struct OpenWeatherMap {
     app_id: String,
 }

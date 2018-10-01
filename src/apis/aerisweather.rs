@@ -6,6 +6,7 @@ use reqwest::Url;
 
 use apis::{WeatherAPI, WeatherData, WeatherDataVec, WeatherQuery};
 
+/// https://www.aerisweather.com/support/docs/api/reference/endpoints/forecasts/
 pub struct AerisWeather {
     client_id: String,
     client_secret: String,

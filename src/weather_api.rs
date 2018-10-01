@@ -7,6 +7,7 @@ use reqwest::async::Client;
 
 use apis::{WeatherAPI, WeatherDataVec, WeatherQuery};
 
+/// Актор, отправляющий запросы погодным API с помощью типажа `WeatherAPI`.
 pub struct WeatherAPIActor<A>
 where
     A: WeatherAPI + 'static,

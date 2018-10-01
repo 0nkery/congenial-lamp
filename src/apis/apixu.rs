@@ -6,6 +6,7 @@ use reqwest::Url;
 
 use apis::{WeatherAPI, WeatherData, WeatherDataVec, WeatherQuery};
 
+/// https://www.apixu.com/doc/forecast.aspx
 pub struct Apixu {
     key: String,
 }

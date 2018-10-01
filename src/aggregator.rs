@@ -11,6 +11,8 @@ use smallvec::SmallVec;
 
 use apis::{WeatherData, WeatherDataVec, WeatherQuery};
 
+/// Актор, агрегирующий результаты запросов в погодным API. Хранит кэш
+/// таких запросов, который очищается каждый день в полночь по UTC.
 pub struct Aggregator {
     weather_apis: SmallVec<[Recipient<WeatherQuery>; 32]>,
     cache: HashMap<WeatherQuery, WeatherDataVec>,

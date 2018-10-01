@@ -6,6 +6,8 @@ use futures::Future;
 
 use apis::{WeatherData, WeatherQuery};
 
+/// Перечисление с ошибками API. `UnexpectedError` логируются
+/// полностью, а наружу отдаются без подробностей.
 #[derive(Fail, Debug)]
 enum APIError {
     #[fail(display = "failed to parse date - {}", _0)]
@@ -18,6 +20,7 @@ enum APIError {
     UnexpectedError(Error),
 }
 
+/// Вспомогательная структура для упаковки ошибок в JSON.
 #[derive(Serialize)]
 struct APIErrorResponse {
     error: String,
@@ -52,6 +55,8 @@ impl APIError {
     }
 }
 
+/// Состояние для Actix' App. `WebAPI` требуется актор, который
+/// будет отвечать на запросы о погоде.
 pub struct WebAPI {
     aggregator: Recipient<WeatherQuery>,
 }
@@ -98,6 +103,7 @@ impl WebAPI {
         Box::new(data)
     }
 
+    /// Возвращает прогноз на 5 дней, даже если от агрегатора вернулось больше.
     fn weekly_forecast(req: &HttpRequest<Self>) -> APIResponder<[Option<WeatherData>; 5]> {
         let query = match Path::<WeatherQuery>::extract(req) {
             Ok(query) => query.into_inner(),

@@ -14,6 +14,7 @@ use failure::Error;
 use reqwest::{Method, Url};
 use smallvec::SmallVec;
 
+/// Прогноз на определенную дату.
 #[derive(Debug, Serialize, Clone)]
 pub struct WeatherData {
     pub temperature: f32,
@@ -22,6 +23,7 @@ pub struct WeatherData {
 
 pub type WeatherDataVec = SmallVec<[WeatherData; 32]>;
 
+/// Запрос всей имеющейся информации по городу в некой стране.
 #[derive(Clone, Serialize, Deserialize, Hash, PartialEq, Eq)]
 pub struct WeatherQuery {
     country: String,
@@ -38,6 +40,8 @@ impl Message for WeatherQuery {
     type Result = Result<WeatherDataVec, Error>;
 }
 
+/// Типаж, позволяющий создавать запросы к некому погодному API.
+/// Запрос должен конвертироваться в `WeatherDataVec`.
 pub trait WeatherAPI {
     const METHOD: Method = Method::GET;
     type Response: Into<WeatherDataVec>;
