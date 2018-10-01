@@ -18,7 +18,7 @@ extern crate serde;
 extern crate serde_json;
 
 use actix::{Arbiter, Recipient};
-use actix_web::{http, middleware, server, App, FromRequest, HttpRequest, HttpResponse, Query};
+use actix_web::{http, middleware, server, App, FromRequest, HttpRequest, HttpResponse, Path};
 use futures::Future;
 
 mod aggregator;
@@ -38,18 +38,30 @@ unsafe impl Sync for AppState {}
 fn daily_forecast(
     req: &HttpRequest<AppState>,
 ) -> Box<Future<Item = HttpResponse, Error = actix_web::error::InternalError<&'static str>>> {
-    let query = Query::<WeatherQuery>::extract(req).expect("bad request");
+    let (country, city, day) = Path::<(String, String, String)>::extract(req)
+        .expect("bad request")
+        .into_inner();
+
+    let day = chrono::NaiveDate::parse_from_str(&day, "%Y-%m-%d").expect("Failed to parse date");
+
+    let query = WeatherQuery::new(country, city);
 
     let data = req
         .state()
         .aggregator
-        .send(query.into_inner())
-        .map(|res| match res {
+        .send(query)
+        .map(move |res| match res {
             Ok(res) => {
-                let body = serde_json::to_string(res.as_slice()).unwrap();
-                HttpResponse::Ok()
-                    .content_type("application/json")
-                    .body(body)
+                let res = res.iter().find(|e| e.date == day);
+
+                if let Some(res) = res {
+                    let body = serde_json::to_string(res).unwrap();
+                    HttpResponse::Ok()
+                        .content_type("application/json")
+                        .body(body)
+                } else {
+                    HttpResponse::Ok().finish()
+                }
             }
             _ => HttpResponse::Ok().finish(),
         }).map_err(|_| {
@@ -111,7 +123,7 @@ fn main() {
     server::new(move || {
         App::with_state(state.clone())
             .middleware(middleware::Logger::default())
-            .resource("/forecast/daily", |r| {
+            .resource("/forecast/daily/{country}/{city}/{day}", |r| {
                 r.method(http::Method::GET).f(daily_forecast)
             })
     }).bind(&bind_to)
