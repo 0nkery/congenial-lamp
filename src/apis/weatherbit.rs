@@ -33,13 +33,13 @@ impl WeatherAPI for WeatherBit {
     }
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 struct WeatherBitForecast {
     ts: i64,
     temp: f32,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 pub struct WeatherBitResponse {
     data: [WeatherBitForecast; 16],
 }
@@ -52,5 +52,43 @@ impl Into<WeatherDataVec> for WeatherBitResponse {
                 date: Utc.timestamp(forecast.ts, 0).naive_utc().date(),
                 temperature: forecast.temp,
             }).collect::<WeatherDataVec>()
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use chrono::{Datelike, Duration};
+    use serde_json;
+
+    use super::*;
+
+    #[test]
+    fn parses_from_value() {
+        let now = Utc::now();
+        let mut current_datetime = now;
+
+        let mut data = Vec::new();
+
+        for _ in 0..16 {
+            data.push(WeatherBitForecast {
+                ts: current_datetime.timestamp(),
+                temp: current_datetime.day() as f32,
+            });
+
+            current_datetime = current_datetime + Duration::days(1);
+        }
+
+        let test_json = json!({ "data": data });
+
+        let response: WeatherBitResponse =
+            serde_json::from_value(test_json).expect("Failed to parse test JSON");
+
+        for (i, entry) in response.data.iter().enumerate() {
+            assert_eq!(entry.temp, Utc.timestamp(entry.ts, 0).day() as f32);
+            assert_eq!(
+                (Utc.timestamp(entry.ts, 0) - now + Duration::seconds(1)).num_days(),
+                i as i64
+            );
+        }
     }
 }
