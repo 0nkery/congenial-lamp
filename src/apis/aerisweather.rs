@@ -76,3 +76,56 @@ impl Into<WeatherDataVec> for AerisWeatherResponse {
         }
     }
 }
+
+#[cfg(test)]
+mod test {
+    use chrono::Duration;
+    use serde_json;
+
+    use super::*;
+    #[test]
+    fn parses_from_value() {
+        let now = Utc::now();
+
+        let test_json = json!({
+            "success": true,
+            "response": [
+                {
+                    "periods": [
+                        {
+                            "timestamp": now.timestamp(),
+                            "avgTempC": 10.0
+                        },
+                        {
+                            "timestamp": (now + Duration::days(1)).timestamp(),
+                            "avgTempC": 11.0
+                        },
+                        {
+                            "timestamp": (now + Duration::days(2)).timestamp(),
+                            "avgTempC": 12.0
+                        },
+                        {
+                            "timestamp": (now + Duration::days(3)).timestamp(),
+                            "avgTempC": 13.0
+                        },
+                        {
+                            "timestamp": (now + Duration::days(4)).timestamp(),
+                            "avgTempC": 10.0
+                        }
+                    ]
+                }
+            ]
+        });
+
+        let response: AerisWeatherResponse =
+            serde_json::from_value(test_json).expect("Failed to parse test JSON");
+
+        assert!(response.success);
+        assert_eq!(response.response[0].periods[0].avg_temp_c, 10.0);
+        assert_eq!(response.response[0].periods[4].avg_temp_c, 10.0);
+        assert_eq!(
+            response.response[0].periods[2].timestamp,
+            (now + Duration::days(2)).timestamp()
+        );
+    }
+}

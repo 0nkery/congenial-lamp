@@ -6,6 +6,7 @@ extern crate tokio;
 
 extern crate chrono;
 extern crate itertools;
+#[macro_use]
 extern crate smallvec;
 
 extern crate env_logger;
@@ -17,6 +18,7 @@ extern crate failure;
 #[macro_use]
 extern crate serde_derive;
 extern crate serde;
+#[macro_use]
 extern crate serde_json;
 
 use actix::{Addr, Arbiter};

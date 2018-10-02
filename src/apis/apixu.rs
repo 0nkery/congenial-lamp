@@ -64,3 +64,71 @@ impl Into<WeatherDataVec> for ApixuResponse {
             }).collect::<WeatherDataVec>()
     }
 }
+
+#[cfg(test)]
+mod test {
+    use chrono::Duration;
+    use serde_json;
+
+    use super::*;
+
+    #[test]
+    fn parses_from_value() {
+        let now = Utc::now();
+
+        let test_json = json!({
+            "forecast": {
+                "forecastday": [
+                    {
+                        "date_epoch": now.timestamp(),
+                        "day": {
+                            "avgtemp_c": 10.0
+                        }
+                    },
+                    {
+                        "date_epoch": (now + Duration::days(1)).timestamp(),
+                        "day": {
+                            "avgtemp_c": 11.0
+                        }
+                    },
+                    {
+                        "date_epoch": (now + Duration::days(2)).timestamp(),
+                        "day": {
+                            "avgtemp_c": 12.0
+                        }
+                    },
+                    {
+                        "date_epoch": (now + Duration::days(3)).timestamp(),
+                        "day": {
+                            "avgtemp_c": 13.0
+                        }
+                    },
+                    {
+                        "date_epoch": (now + Duration::days(4)).timestamp(),
+                        "day": {
+                            "avgtemp_c": 14.0
+                        }
+                    },
+                    {
+                        "date_epoch": (now + Duration::days(5)).timestamp(),
+                        "day": {
+                            "avgtemp_c": 15.0
+                        }
+                    },
+                    {
+                        "date_epoch": (now + Duration::days(6)).timestamp(),
+                        "day": {
+                            "avgtemp_c": 10.0
+                        }
+                    }
+                ]
+            }
+        });
+
+        let response: ApixuResponse =
+            serde_json::from_value(test_json).expect("Failed to parse test JSON");
+
+        assert_eq!(response.forecast.forecastday[0].day.avgtemp_c, 10.0);
+        assert_eq!(response.forecast.forecastday[6].day.avgtemp_c, 10.0);
+    }
+}
