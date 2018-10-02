@@ -16,6 +16,8 @@ enum APIError {
     BadRequest(error::Error),
     #[fail(display = "weather data not found for given day - {}", _0)]
     NotFound(NaiveDate),
+    #[fail(display = "insufficient weather data for full weekly forecast")]
+    InsufficientData,
     #[fail(display = "unexpected error during request - {}", _0)]
     UnexpectedError(Error),
 }
@@ -31,6 +33,7 @@ impl error::ResponseError for APIError {
         let status_code = match *self {
             APIError::InvalidDate(_) | APIError::BadRequest(_) => http::StatusCode::BAD_REQUEST,
             APIError::NotFound(_) => http::StatusCode::NOT_FOUND,
+            APIError::InsufficientData => http::StatusCode::SERVICE_UNAVAILABLE,
             APIError::UnexpectedError(_) => http::StatusCode::INTERNAL_SERVER_ERROR,
         };
 
@@ -119,6 +122,9 @@ impl WebAPI {
                     let mut data: [Option<WeatherData>; 5] = Default::default();
                     for (i, entry) in res.into_iter().take(5).enumerate() {
                         data[i] = Some(entry);
+                    }
+                    if data.iter().any(|e| e.is_none()) {
+                        return Err(APIError::InsufficientData);
                     }
                     Ok(Json(data))
                 }
