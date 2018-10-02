@@ -23,7 +23,7 @@ enum APIError {
 }
 
 /// Вспомогательная структура для упаковки ошибок в JSON.
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize)]
 struct APIErrorResponse {
     error: String,
 }
@@ -132,5 +132,228 @@ impl WebAPI {
             }).map_err(|err| APIError::UnexpectedError(Error::from(err)));
 
         Box::new(data)
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use actix::prelude::*;
+    use actix_web::{test, HttpMessage};
+    use chrono::Utc;
+    use failure::err_msg;
+
+    use super::*;
+    use apis::WeatherDataVec;
+
+    struct TestWeatherActor;
+
+    impl Actor for TestWeatherActor {
+        type Context = SyncContext<Self>;
+    }
+
+    impl Handler<WeatherQuery> for TestWeatherActor {
+        type Result = Result<WeatherDataVec, Error>;
+
+        fn handle(&mut self, _msg: WeatherQuery, _ctx: &mut Self::Context) -> Self::Result {
+            let mut vec = WeatherDataVec::new();
+
+            for _ in 0..5 {
+                vec.push(WeatherData {
+                    temperature: 10.0,
+                    date: Utc::now().naive_utc().date(),
+                });
+            }
+
+            Ok(vec)
+        }
+    }
+
+    struct EmptyWeatherActor;
+
+    impl Actor for EmptyWeatherActor {
+        type Context = SyncContext<Self>;
+    }
+
+    impl Handler<WeatherQuery> for EmptyWeatherActor {
+        type Result = Result<WeatherDataVec, Error>;
+
+        fn handle(&mut self, _msg: WeatherQuery, _ctx: &mut Self::Context) -> Self::Result {
+            let vec = WeatherDataVec::new();
+            Ok(vec)
+        }
+    }
+
+    struct FailingWeatherActor;
+
+    impl Actor for FailingWeatherActor {
+        type Context = SyncContext<Self>;
+    }
+
+    impl Handler<WeatherQuery> for FailingWeatherActor {
+        type Result = Result<WeatherDataVec, Error>;
+
+        fn handle(&mut self, _msg: WeatherQuery, _ctx: &mut Self::Context) -> Self::Result {
+            Err(err_msg("test"))
+        }
+    }
+
+    fn init_test_server<F: Fn() -> WebAPI + Sync + Send + 'static>(init_fn: F) -> test::TestServer {
+        test::TestServer::build_with_state(init_fn).start(|app: &mut test::TestApp<WebAPI>| {
+            app.resource("/forecast/daily/{country}/{city}/{day}", |r| {
+                r.method(http::Method::GET).f(WebAPI::daily_forecast)
+            }).resource("/forecast/weekly/{country}/{city}", |r| {
+                r.method(http::Method::GET).f(WebAPI::weekly_forecast)
+            });
+        })
+    }
+
+    #[test]
+    fn normal_path() {
+        let mut srv = init_test_server(|| {
+            let weather_actor = SyncArbiter::start(1, || TestWeatherActor {});
+            WebAPI {
+                aggregator: weather_actor.recipient(),
+            }
+        });
+
+        let now = Utc::now().format("%Y-%m-%d");
+
+        let request = srv
+            .client(
+                http::Method::GET,
+                &format!("/forecast/daily/UK/London/{}", now),
+            ).finish()
+            .expect("Failed to construct test request");
+        let response = srv
+            .execute(request.send())
+            .expect("Failed to send test request");
+
+        assert!(response.status().is_success());
+
+        let data: WeatherData = srv
+            .execute(response.json())
+            .expect("Failed to parse response as JSON");
+
+        assert_eq!(data.temperature, 10.0);
+
+        let request = srv
+            .client(http::Method::GET, "/forecast/weekly/UK/London")
+            .finish()
+            .expect("Failed to construct test request");
+        let response = srv
+            .execute(request.send())
+            .expect("Failed to send test request");
+
+        assert!(response.status().is_success());
+
+        let data: [WeatherData; 5] = srv
+            .execute(response.json())
+            .expect("Failed to parse response as JSON");
+        assert_eq!(data[0].temperature, 10.0);
+        assert_eq!(data[4].temperature, 10.0);
+    }
+
+    #[test]
+    fn error_path() {
+        let mut srv = init_test_server(|| {
+            let weather_actor = SyncArbiter::start(1, || TestWeatherActor {});
+            WebAPI {
+                aggregator: weather_actor.recipient(),
+            }
+        });
+
+        let request = srv
+            .client(http::Method::GET, "/forecast/daily/UK/London/invalid-date")
+            .finish()
+            .expect("Failed to construct test request");
+        let response = srv
+            .execute(request.send())
+            .expect("Failed to send test request");
+
+        assert!(response.status().is_client_error());
+
+        let data: APIErrorResponse = srv
+            .execute(response.json())
+            .expect("Failed to parse response as JSON");
+
+        assert_eq!(
+            data.error,
+            "failed to parse date - input contains invalid characters"
+        );
+
+        let request = srv
+            .client(http::Method::GET, "/forecast/daily/UK/London/2077-01-01")
+            .finish()
+            .expect("Failed to construct test request");
+        let response = srv
+            .execute(request.send())
+            .expect("Failed to send test request");
+
+        assert!(response.status().is_client_error());
+
+        let data: APIErrorResponse = srv
+            .execute(response.json())
+            .expect("Failed to parse response as JSON");
+
+        assert_eq!(
+            data.error,
+            "weather data not found for given day - 2077-01-01"
+        );
+    }
+
+    #[test]
+    fn empty_data() {
+        let mut srv = init_test_server(|| {
+            let weather_actor = SyncArbiter::start(1, || EmptyWeatherActor {});
+            WebAPI {
+                aggregator: weather_actor.recipient(),
+            }
+        });
+
+        let request = srv
+            .client(http::Method::GET, "/forecast/weekly/UK/London")
+            .finish()
+            .expect("Failed to construct test request");
+        let response = srv
+            .execute(request.send())
+            .expect("Failed to send test request");
+
+        assert!(response.status().is_server_error());
+
+        let data: APIErrorResponse = srv
+            .execute(response.json())
+            .expect("Failed to parse response as JSON");
+        assert_eq!(
+            data.error,
+            "insufficient weather data for full weekly forecast"
+        )
+    }
+
+    #[test]
+    fn failing_actor() {
+        let mut srv = init_test_server(|| {
+            let weather_actor = SyncArbiter::start(1, || FailingWeatherActor {});
+            WebAPI {
+                aggregator: weather_actor.recipient(),
+            }
+        });
+
+        let request = srv
+            .client(http::Method::GET, "/forecast/weekly/UK/London")
+            .finish()
+            .expect("Failed to construct test request");
+        let response = srv
+            .execute(request.send())
+            .expect("Failed to send test request");
+
+        assert!(response.status().is_server_error());
+
+        let data: APIErrorResponse = srv
+            .execute(response.json())
+            .expect("Failed to parse response as JSON");
+        assert_eq!(
+            data.error,
+            "An internal error occurred. Please try again later."
+        )
     }
 }

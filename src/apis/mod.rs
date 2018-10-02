@@ -15,7 +15,7 @@ use reqwest::{Method, Url};
 use smallvec::SmallVec;
 
 /// Прогноз на определенную дату.
-#[derive(Debug, Serialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct WeatherData {
     pub temperature: f32,
     pub date: NaiveDate,
