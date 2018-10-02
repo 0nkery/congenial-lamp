@@ -21,7 +21,7 @@ extern crate serde;
 #[macro_use]
 extern crate serde_json;
 
-use actix::{Addr, Arbiter};
+use actix::{Actor, Addr};
 use actix_web::server;
 use failure::Error;
 
@@ -39,25 +39,25 @@ fn init_aggregator() -> Result<Addr<Aggregator>, Error> {
     let aerisweather = {
         let api = apis::AerisWeather::new()?;
         let client = client.clone();
-        Arbiter::start(move |_ctx| WeatherAPIActor::new(client, api))
+        WeatherAPIActor::new(client, api).start()
     };
 
     let apixu = {
         let api = apis::Apixu::new()?;
         let client = client.clone();
-        Arbiter::start(move |_ctx| WeatherAPIActor::new(client, api))
+        WeatherAPIActor::new(client, api).start()
     };
 
     let openweathermap = {
         let api = apis::OpenWeatherMap::new()?;
         let client = client.clone();
-        Arbiter::start(move |_ctx| WeatherAPIActor::new(client, api))
+        WeatherAPIActor::new(client, api).start()
     };
 
     let weatherbit = {
         let api = apis::WeatherBit::new()?;
         let client = client.clone();
-        Arbiter::start(move |_ctx| WeatherAPIActor::new(client, api))
+        WeatherAPIActor::new(client, api).start()
     };
 
     let aggregator = aggregator::Aggregator::new()
@@ -66,7 +66,7 @@ fn init_aggregator() -> Result<Addr<Aggregator>, Error> {
         .add_api(openweathermap.recipient())
         .add_api(weatherbit.recipient());
 
-    Ok(Arbiter::start(|_ctx| aggregator))
+    Ok(aggregator.start())
 }
 
 fn main() -> Result<(), Error> {
