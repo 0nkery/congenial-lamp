@@ -82,8 +82,7 @@ mod test {
 
     use super::*;
 
-    #[test]
-    fn aggregates_responses() {
+    fn generate_response() -> OWMResponse {
         let mut now = Utc::now();
         let mut entries = Vec::new();
 
@@ -97,7 +96,12 @@ mod test {
             });
         }
 
-        let owm_response = OWMResponse { list: entries };
+        OWMResponse { list: entries }
+    }
+
+    #[test]
+    fn aggregates_responses() {
+        let owm_response = generate_response();
 
         let weather_data_vec: WeatherDataVec = owm_response.into();
 
