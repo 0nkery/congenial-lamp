@@ -134,26 +134,27 @@ mod test {
 
     #[test]
     fn aggregates_results() {
-        let mut results = WeatherDataVec::new();
         let now = Utc::now().naive_utc().date();
         let tomorrow = now + Duration::days(2);
 
-        results.push(WeatherData {
-            date: now,
-            temperature: 1.0,
-        });
-        results.push(WeatherData {
-            date: now,
-            temperature: 2.0,
-        });
-        results.push(WeatherData {
-            date: tomorrow,
-            temperature: 6.0,
-        });
-        results.push(WeatherData {
-            date: tomorrow,
-            temperature: 10.0,
-        });
+        let results = smallvec![
+            WeatherData {
+                date: now,
+                temperature: 1.0,
+            },
+            WeatherData {
+                date: now,
+                temperature: 2.0,
+            },
+            WeatherData {
+                date: tomorrow,
+                temperature: 6.0,
+            },
+            WeatherData {
+                date: tomorrow,
+                temperature: 10.0,
+            }
+        ];
 
         let aggregated = Aggregator::aggregate(results);
 
